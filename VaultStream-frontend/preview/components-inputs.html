@@ -1,0 +1,29 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>body{margin:0;padding:24px;width:700px;height:260px;box-sizing:border-box;overflow:hidden}</style>
+</head><body>
+<div class="label" style="margin-bottom:14px">INPUTS &amp; FILTER BAR</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+  <!-- search -->
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid var(--line-2)">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span style="font:var(--t-body);color:var(--fg-1);flex:1">auth.token.issued cid=7c3b…</span>
+    <span style="font:var(--t-mono);font-size:11px;color:var(--fg-4);background:rgba(255,255,255,.06);padding:3px 7px;border-radius:6px">⌘ K</span>
+  </div>
+  <!-- focused search · solid primary border + ring -->
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid var(--primary-400);box-shadow:0 0 0 3px rgba(139,92,246,.18)">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span style="font:var(--t-body);color:var(--fg-1);flex:1">Search logs by correlation ID, message, or service…</span>
+    <span style="font:500 11px var(--font-body);color:var(--fg-4)">FOCUSED</span>
+  </div>
+  <!-- filter bar -->
+  <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:var(--card-bg);border:1px solid var(--line-1)">
+    <div style="width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.03);display:grid;place-items:center;color:var(--fg-3)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+    </div>
+    <div style="flex:1;font:var(--t-body);color:var(--fg-4);padding:8px 4px">Search logs…</div>
+    <span style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line-2);color:var(--fg-1);font:600 12px var(--font-body)">All Levels</span>
+    <span style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line-2);color:var(--fg-1);font:600 12px var(--font-body)">Last 15m</span>
+    <span style="padding:7px 14px;border-radius:8px;background:var(--primary-400);color:#1B1238;font:600 12px var(--font-body)">Export</span>
+  </div>
+</div></body></html>

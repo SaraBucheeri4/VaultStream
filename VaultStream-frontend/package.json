@@ -1,0 +1,27 @@
+{
+  "name": "vaultstream-frontend",
+  "version": "0.1.0",
+  "description": "Visual language and component library for **FINTECH_OS · Core Engine** — the auth & monitoring platform for a digital bank's core infrastructure. Engineers, SREs, and security analysts use it to tail logs and watch real-time system metrics.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@react-three/fiber": "^8.18.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.3",
+    "three": "^0.167.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^5.4.21"
+  }
+}

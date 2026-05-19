@@ -1,0 +1,46 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>body{margin:0;padding:24px;width:700px;height:300px;box-sizing:border-box;overflow:hidden}</style>
+</head><body>
+<div class="label" style="margin-bottom:12px">LOG TABLE · LIVE STREAM</div>
+<div style="background:var(--card-bg);border:1px solid var(--line-1);border-radius:14px;overflow:hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
+    <div style="font:700 16px var(--font-display)">Live Stream</div>
+    <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 10px;border-radius:999px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:var(--tertiary-400);font:500 11.5px var(--font-body)">
+      <span style="width:6px;height:6px;border-radius:99px;background:var(--tertiary-400);box-shadow:0 0 6px var(--tertiary-400)"></span>
+      Real-time Connected
+    </span>
+  </div>
+  <div style="display:grid;grid-template-columns:160px 70px 130px 1fr 110px;padding:10px 20px;background:rgba(255,255,255,.02);font:500 10.5px var(--font-body);text-transform:uppercase;letter-spacing:.08em;color:var(--fg-3);border-top:1px solid var(--line-1)">
+    <span>Timestamp</span><span>Level</span><span>Service</span><span>Message</span><span>Correlation</span>
+  </div>
+  
+    <div style="display:grid;grid-template-columns:160px 70px 130px 1fr 110px;padding:12px 20px;border-top:1px solid var(--line-1);font:var(--t-body);align-items:center">
+      <span style="font:var(--t-mono);font-size:12px;color:var(--fg-3)">2026-05-19 14:32:08.214</span>
+      <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;background:#103847;color:#22D3EE;font:700 10.5px var(--font-mono);letter-spacing:.08em">INFO</span></span>
+      <span style="color:var(--fg-2);font-weight:500;font:var(--t-body)">api-gateway</span>
+      <span style="color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Database query execution: 42ms</span>
+      <span style="font:var(--t-mono);font-size:11.5px;color:var(--fg-3)">gw_001_p9</span>
+    </div>
+    <div style="display:grid;grid-template-columns:160px 70px 130px 1fr 110px;padding:12px 20px;border-top:1px solid var(--line-1);font:var(--t-body);align-items:center">
+      <span style="font:var(--t-mono);font-size:12px;color:var(--fg-3)">2026-05-19 14:32:08.219</span>
+      <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;background:#4A0F1E;color:#FB7185;font:700 10.5px var(--font-mono);letter-spacing:.08em">ERROR</span></span>
+      <span style="color:var(--fg-2);font-weight:500;font:var(--t-body)">auth-service</span>
+      <span style="color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Failed to validate JWT signature: issuer mismatch</span>
+      <span style="font:var(--t-mono);font-size:11.5px;color:var(--fg-3)">auth_882j_f2</span>
+    </div>
+    <div style="display:grid;grid-template-columns:160px 70px 130px 1fr 110px;padding:12px 20px;border-top:1px solid var(--line-1);font:var(--t-body);align-items:center">
+      <span style="font:var(--t-mono);font-size:12px;color:var(--fg-3)">2026-05-19 14:32:08.331</span>
+      <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;background:#2C1F4A;color:#C084FC;font:700 10.5px var(--font-mono);letter-spacing:.08em">WARN</span></span>
+      <span style="color:var(--fg-2);font-weight:500;font:var(--t-body)">api-gateway</span>
+      <span style="color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">High latency detected on endpoint /v1/ledger (420ms)</span>
+      <span style="font:var(--t-mono);font-size:11.5px;color:var(--fg-3)">gw_001_p9</span>
+    </div>
+    <div style="display:grid;grid-template-columns:160px 70px 130px 1fr 110px;padding:12px 20px;border-top:1px solid var(--line-1);font:var(--t-body);align-items:center">
+      <span style="font:var(--t-mono);font-size:12px;color:var(--fg-3)">2026-05-19 14:32:08.402</span>
+      <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;background:#241E47;color:#A78BFA;font:700 10.5px var(--font-mono);letter-spacing:.08em">DEBUG</span></span>
+      <span style="color:var(--fg-2);font-weight:500;font:var(--t-body)">notification-svc</span>
+      <span style="color:var(--fg-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Dispatching push notification to device id 0x882…</span>
+      <span style="font:var(--t-mono);font-size:11.5px;color:var(--fg-3)">not_f44_l1</span>
+    </div>
+</div></body></html>

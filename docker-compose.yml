@@ -43,7 +43,7 @@ services:
     image: docker.elastic.co/logstash/logstash:8.13.0
     container_name: vaultstream-logstash
     ports:
-      - "5000:5000/tcp"   # Spring Boot → Logstash TCP input
+      - "5001:5000/tcp"   # Spring Boot → Logstash TCP input (host 5001, macOS uses 5000)
       - "9600:9600"       # Logstash monitoring API
     volumes:
       - ./docker/logstash/pipeline:/usr/share/logstash/pipeline:ro

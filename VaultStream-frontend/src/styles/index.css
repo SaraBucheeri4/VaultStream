@@ -1,0 +1,5 @@
+/* Entry stylesheet — pulls in design tokens and the dashboard styles
+   from the existing CSS files at the repo root and ui_kits/auth-monitoring. */
+
+@import url('../../colors_and_type.css');
+@import url('../../ui_kits/auth-monitoring/styles.css');

@@ -1,0 +1,38 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>body{margin:0;padding:24px;width:700px;height:220px;box-sizing:border-box;overflow:hidden}</style>
+</head><body>
+<div class="label" style="margin-bottom:14px">LEVEL BADGES + STATUS</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;background:#4A0F1E;color:#FB7185;font:700 11px var(--font-mono);letter-spacing:.08em">ERROR</span>
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;background:#2C1F4A;color:#C084FC;font:700 11px var(--font-mono);letter-spacing:.08em">WARN</span>
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;background:#103847;color:#22D3EE;font:700 11px var(--font-mono);letter-spacing:.08em">INFO</span>
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;background:#241E47;color:#A78BFA;font:700 11px var(--font-mono);letter-spacing:.08em">DEBUG</span>
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;background:rgba(148,163,184,.15);color:#94A3B8;font:700 11px var(--font-mono);letter-spacing:.08em">TRACE</span>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:rgba(34,211,238,.1);color:#22D3EE;font:500 12.5px var(--font-body)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Operational
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:rgba(192,132,252,.12);color:#C084FC;font:500 12.5px var(--font-body)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>Degraded
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:rgba(244,63,94,.12);color:#FB7185;font:500 12.5px var(--font-body)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Down
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:rgba(167,139,250,.12);color:#A78BFA;font:500 12.5px var(--font-body)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10ZM12 6v6l4 2"/></svg>Maintenance
+      </span>
+  </div>
+  <div style="display:flex;gap:18px;align-items:center;padding:12px 14px;background:rgba(255,255,255,.02);border-radius:12px">
+    <span style="display:inline-flex;align-items:center;gap:8px;font:var(--t-body);color:var(--fg-1)">
+      <span style="position:relative;width:8px;height:8px"><span style="position:absolute;inset:0;background:#22D3EE;border-radius:99px;animation:p 1.6s infinite"></span><span style="position:absolute;inset:0;background:#22D3EE;border-radius:99px"></span></span>
+      Real-time Connected
+    </span>
+    <span style="font:var(--t-mono);font-size:11px;color:var(--fg-3)">1,238 events/min</span>
+  </div>
+  <style>@keyframes p{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}</style>
+</div></body></html>

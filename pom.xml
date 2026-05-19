@@ -15,6 +15,7 @@
 	<description>Uma plataforma de troca de livros entre usuários. A ideia é criar uma comunidade onde os amantes da leitura possam trocar livros que já leram por outros que desejam ler, promovendo assim a reutilização e a sustentabilidade.</description>
 	<properties>
 		<java.version>21</java.version>
+		<lombok.version>1.18.44</lombok.version>
 	</properties>
 	<dependencies>
 		<!-- Core -->
