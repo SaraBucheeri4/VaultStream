@@ -1217,58 +1217,107 @@ body {
 }
 
 /* ============================================================
-   LOGIN SCREEN — admins only
+   LOGIN SCREEN — glass redesign
    ============================================================ */
+
+
 .login-shell {
   position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 32px;
-  background: var(--bg-1);
+  background: #080c18;
   overflow: hidden;
 }
+
+/* Ambient glows in the background */
+.login-shell::before {
+  content: "";
+  position: absolute;
+  top: -180px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse, rgba(100, 60, 220, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+.login-shell::after {
+  content: "";
+  position: absolute;
+  bottom: -120px;
+  left: 30%;
+  width: 500px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(220, 60, 140, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
 .login-grid {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(
     circle,
-    rgba(139, 92, 246, 0.1) 1px,
+    rgba(139, 92, 246, 0.08) 1px,
     transparent 1px
   );
   background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    #000 30%,
-    transparent 75%
-  );
-  opacity: 0.5;
+  opacity: 0.6;
   pointer-events: none;
 }
 
+/* Glass card */
 .login-card {
   position: relative;
   width: 100%;
-  max-width: 440px;
-  background: var(--bg-card);
-  border: 1px solid var(--line-2);
-  border-radius: 18px;
+  max-width: 460px;
+  background: rgba(12, 16, 32, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
   overflow: hidden;
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 32px 80px -20px rgba(0, 0, 0, 0.7),
+    0 0 60px -10px rgba(100, 60, 220, 0.15);
+}
+
+/* Specular top sheen */
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 40%, rgba(255,255,255,0.08) 70%, transparent);
+  pointer-events: none;
 }
 
 .login-head {
-  padding: 22px 28px 16px;
-  border-bottom: 1px solid var(--line-1);
+  padding: 28px 32px 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  text-align: center;
 }
 .login-brand {
-  font: 700 17px var(--font-brand);
-  letter-spacing: 1.5px;
-  color: var(--primary-400);
+  font: 800 28px var(--font-brand);
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, #c4b5fd 0%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
 }
+.login-brand-sub {
+  font: 500 13px var(--font-body);
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
+}
+
 .login-product {
   display: flex;
   align-items: center;
@@ -1296,18 +1345,23 @@ body {
 }
 
 .login-body {
-  padding: 26px 28px 24px;
+  padding: 24px 32px 30px;
 }
 
+.login-title {
+  text-align: center;
+  margin-bottom: 24px;
+}
 .login-title h2 {
-  font: 700 24px var(--font-display);
-  letter-spacing: -0.4px;
+  font: 700 20px var(--font-display);
+  letter-spacing: 0.01em;
   margin: 0 0 6px;
+  color: var(--fg-1);
 }
 .login-title p {
   font: 400 13px var(--font-body);
   color: var(--fg-3);
-  margin: 0 0 22px;
+  margin: 0;
 }
 
 .login-form {
@@ -1319,31 +1373,30 @@ body {
 .login-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
 }
 .login-field > span {
-  font: 600 11px var(--font-label);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--fg-3);
+  display: none;
 }
 
 .login-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 14px;
+  padding: 13px 16px;
   border-radius: 10px;
-  background: var(--bg-0);
-  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--fg-3);
   transition:
     border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
 }
 .login-input:focus-within {
-  border-color: var(--primary-400);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+  border-color: rgba(167, 139, 250, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 .login-input input {
   flex: 1;
@@ -1351,7 +1404,7 @@ body {
   border: 0;
   outline: 0;
   color: var(--fg-1);
-  font: var(--t-body);
+  font: 400 14px var(--font-body);
 }
 .login-input input::placeholder {
   color: var(--fg-4);
@@ -1390,35 +1443,41 @@ body {
   cursor: pointer;
 }
 .login-link {
-  color: var(--primary-400);
+  color: #7dd3fc;
   cursor: pointer;
   text-decoration: none;
   font-weight: 500;
 }
 .login-link:hover {
-  color: var(--primary-300);
+  color: #bae6fd;
 }
 
+/* Gradient SIGN IN button */
 .login-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 12px 18px;
+  padding: 14px 18px;
   border-radius: 10px;
   border: 0;
-  background: var(--primary-400);
-  color: #14092a;
-  font: 700 13.5px var(--font-body);
+  background:#EC4899 ;
+  color: #fff;
+  font: 700 14px var(--font-brand);
+  letter-spacing: 0.12em;
   cursor: pointer;
   transition:
     background var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--ease-out);
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+  box-shadow: 0 8px 28px -6px rgba(139, 92, 246, 0.4);
   margin-top: 4px;
 }
 .login-submit:hover:not(:disabled) {
-  background: var(--primary-300);
+  background: #D53587;
+  box-shadow: 0 12px 36px -6px rgba(139, 92, 246, 0.55);
+  transform: translateY(-1px);
 }
 .login-submit:active:not(:disabled) {
   transform: scale(0.99);
@@ -1442,40 +1501,37 @@ body {
   content: "";
   position: absolute;
   top: 50%;
-  width: calc(50% - 18px);
+  width: calc(50% - 22px);
   height: 1px;
-  background: var(--line-1);
+  background: rgba(255, 255, 255, 0.07);
 }
-.login-divider::before {
-  left: 0;
-}
-.login-divider::after {
-  right: 0;
-}
+.login-divider::before { left: 0; }
+.login-divider::after  { right: 0; }
 .login-divider span {
-  background: var(--bg-card);
+  background: transparent;
   padding: 0 10px;
   position: relative;
 }
 
+/* Demo / SSO button — glass ghost */
 .login-sso {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 11px 18px;
+  padding: 12px 18px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--fg-1);
   font: 600 13px var(--font-body);
   cursor: pointer;
   transition: all var(--dur-base) var(--ease-out);
 }
 .login-sso:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--line-3);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .login-error {
@@ -1491,9 +1547,9 @@ body {
 }
 
 .login-foot {
-  margin-top: 22px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line-1);
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1551,8 +1607,8 @@ body {
 .login-otp__cell {
   height: 52px;
   border-radius: 10px;
-  background: var(--bg-0);
-  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: grid;
   place-items: center;
   font: 700 20px var(--font-mono);
@@ -1564,8 +1620,8 @@ body {
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
 }
 .login-otp__cell.filled {
-  border-color: var(--line-3);
-  background: var(--bg-2);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
 }
 .login-otp__hidden {
   position: absolute;

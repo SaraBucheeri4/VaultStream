@@ -19,6 +19,23 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+resend:
+  api:
+    key: ${RESEND_API_KEY:re_placeholder}
+  from:
+    email: ${RESEND_FROM_EMAIL:noreply@yourdomain.com}
+    name: VaultStream
+
+otp:
+  expiry-minutes: 5
+  max-attempts: 5
+  rate-limit-per-hour: 5
+
 # JWT secret — always override via environment variable in production
 api:
   security:

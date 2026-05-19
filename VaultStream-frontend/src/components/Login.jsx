@@ -34,6 +34,11 @@ export default function Login({ onAuth }) {
       if (res.ok) {
         const { token } = await res.json();
         sessionStorage.setItem('fos_token', token);
+        await fetch('/api/otp/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, purpose: 'TWO_FACTOR_AUTH' }),
+        });
         setStep(2);
       } else if (res.status === 401) {
         setError('Invalid credentials. Check your email and password.');
@@ -47,15 +52,32 @@ export default function Login({ onAuth }) {
     }
   };
 
-  const submitMfa = (e) => {
+  const submitMfa = async (e) => {
     e?.preventDefault();
     setError('');
     if (mfa.length < 6) {
-      setError('Enter the 6-digit code from your authenticator.');
+      setError('Enter the 6-digit code sent to your email.');
       return;
     }
     setSubmitting(true);
-    setTimeout(() => onAuth({ email, role: 'admin', token: sessionStorage.getItem('fos_token') }), 500);
+    try {
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, purpose: 'TWO_FACTOR_AUTH', code: mfa }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        onAuth({ email, role: 'admin', token: sessionStorage.getItem('fos_token') });
+      } else {
+        setError(data.message || 'Invalid code. Try again.');
+        setMfa('');
+      }
+    } catch {
+      setError('Cannot reach the server. Check your connection.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const useDemo = () => {
@@ -69,11 +91,8 @@ export default function Login({ onAuth }) {
 
       <div className="login-card">
         <header className="login-head">
-          <div className="login-brand">FINTECH_OS</div>
-          <div className="login-product">
-            <span className="login-product__dot" />
-            CORE ENGINE
-          </div>
+          <div className="login-brand">VAULT STASH</div>
+          <div className="login-brand-sub">Secure Access</div>
         </header>
 
         <div className="login-body">
@@ -144,7 +163,7 @@ export default function Login({ onAuth }) {
                 <div className="login-mfa-icon"><Icon name="shield-check" size={20} /></div>
                 <div>
                   <div className="login-mfa-title">Two-factor verification</div>
-                  <div className="login-mfa-sub">Enter the 6-digit code from your authenticator for <strong>{email}</strong>.</div>
+                  <div className="login-mfa-sub">We sent a 6-digit code to <strong>{email}</strong>. It expires in 5 minutes.</div>
                 </div>
               </div>
 
