@@ -46,11 +46,17 @@ public class ResendEmailService {
 
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(RESEND_API_URL, new HttpEntity<>(body, headers), (Class<Map<String, Object>>) (Class<?>) Map.class);
-            log.info("Resend response {} for to={} from={}", response.getStatusCode(), toEmail, fromEmail);
+            log.info("Resend response {} for to={} from={}", response.getStatusCode(), maskEmail(toEmail), fromEmail);
         } catch (HttpClientErrorException e) {
-            log.error("Resend rejected email to={} status={} body={}", toEmail, e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("Resend rejected email to={} status={} body={}", maskEmail(toEmail), e.getStatusCode(), e.getResponseBodyAsString());
             throw new RuntimeException("Failed to send email: " + e.getResponseBodyAsString(), e);
         }
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "***";
+        int atIdx = email.indexOf('@');
+        return email.charAt(0) + "***" + email.substring(atIdx);
     }
 
     private String buildEmailHtml(String code, String purpose) {

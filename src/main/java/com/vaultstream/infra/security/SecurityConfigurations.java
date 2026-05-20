@@ -49,6 +49,7 @@ public class SecurityConfigurations {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/otp/generate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/otp/verify").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/metrics/summary").permitAll()
