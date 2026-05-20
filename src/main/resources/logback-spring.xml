@@ -73,7 +73,7 @@
     </appender>
 
     <!-- Database appender: persists WARN/ERROR to PostgreSQL via Spring bean -->
-    <appender name="DATABASE" class="com.letroca.infra.logging.DatabaseLogAppender"/>
+    <appender name="DATABASE" class="com.vaultstream.infra.logging.DatabaseLogAppender"/>
 
     <!-- Suppress noisy framework loggers -->
     <logger name="org.springframework" level="WARN"/>
@@ -82,7 +82,7 @@
 
     <!-- Application loggers at DEBUG in dev, INFO elsewhere -->
     <springProfile name="dev">
-        <logger name="com.letroca" level="DEBUG"/>
+        <logger name="com.vaultstream" level="DEBUG"/>
     </springProfile>
 
     <root level="INFO">

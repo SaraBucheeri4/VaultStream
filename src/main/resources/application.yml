@@ -69,7 +69,7 @@ management:
 logging:
   level:
     root: INFO
-    com.letroca: INFO
+    com.vaultstream: INFO
     org.springframework.security: WARN
     org.hibernate: WARN
   file:
@@ -84,7 +84,7 @@ spring:
 
 logging:
   level:
-    com.letroca: DEBUG
+    com.vaultstream: DEBUG
 
 ---
 # Production profile — JSON console output (handled by logback-spring.xml prod profile)
@@ -96,4 +96,4 @@ spring:
 logging:
   level:
     root: WARN
-    com.letroca: INFO
+    com.vaultstream: INFO
