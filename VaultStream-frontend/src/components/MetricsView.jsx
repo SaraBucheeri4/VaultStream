@@ -1,9 +1,9 @@
-// MetricsView.jsx — Performance Metrics surface (matches comp)
-// Flat solids only — no gradient strokes or text.
+// MetricsView.jsx — Performance Metrics surface, data from /api/metrics/summary
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon.jsx';
 
+// ── Animated counter ──────────────────────────────────────────────────────────
 function useCounter(target, durationMs = 700) {
   const [val, setVal] = useState(target);
   const prev = useRef(target);
@@ -11,14 +11,13 @@ function useCounter(target, durationMs = 700) {
   useEffect(() => {
     const start = performance.now();
     const from = prev.current;
-    const to = target;
     cancelAnimationFrame(rafRef.current);
     const tick = (t) => {
       const p = Math.min(1, (t - start) / durationMs);
       const eased = 1 - Math.pow(1 - p, 3);
-      setVal(from + (to - from) * eased);
+      setVal(from + (target - from) * eased);
       if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else prev.current = to;
+      else prev.current = target;
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
@@ -26,10 +25,11 @@ function useCounter(target, durationMs = 700) {
   return val;
 }
 
-function useSeries(len = 60, opts = {}) {
-  const { min = 0, max = 100, start = 50, drift = 0.06 } = opts;
+// ── Fake-drift line chart (infra load — JVM CPU %) ───────────────────────────
+function useSeries(seed, len = 60, opts = {}) {
+  const { min = 0, max = 100, drift = 0.06 } = opts;
   const [series, setSeries] = useState(() => {
-    const a = []; let v = start;
+    const a = []; let v = seed;
     for (let i = 0; i < len; i++) {
       v += (Math.random() - 0.5) * (max - min) * drift;
       v = Math.max(min, Math.min(max, v));
@@ -51,9 +51,8 @@ function useSeries(len = 60, opts = {}) {
   return series;
 }
 
-// ------------------- Stat cards (4 unique footers) -------------------
-
-export function MStatCard({ label, value, unit, icon, footer }) {
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function MStatCard({ label, value, unit, icon, footer }) {
   return (
     <div className="mstat">
       <div className="mstat__head">
@@ -67,17 +66,15 @@ export function MStatCard({ label, value, unit, icon, footer }) {
   );
 }
 
-// ------------------- Infrastructure Load chart (solid color) -------------------
-
-export function InfraLoadChart({ height = 240 }) {
-  const series = useSeries(60, { min: 25, max: 95, start: 55, drift: 0.18 });
+// ── Infrastructure load chart ─────────────────────────────────────────────────
+function InfraLoadChart({ seedCpu = 50, height = 240 }) {
+  const series = useSeries(seedCpu, 60, { min: 0, max: 100, drift: 0.12 });
   const w = 620;
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min || 1;
   const step = w / (series.length - 1);
   const pts = series.map((v, i) => [i * step, 18 + (height - 36) * (1 - (v - min) / range)]);
-  // Smooth via Catmull-Rom → cubic Bezier
   const smooth = (pts) => {
     let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
     for (let i = 0; i < pts.length - 1; i++) {
@@ -103,19 +100,19 @@ export function InfraLoadChart({ height = 240 }) {
           <stop offset="100%" stopColor="#A78BFA" stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* horizontal grid */}
       {[0.25, 0.5, 0.75].map(p => (
-        <line key={p} x1="0" x2={w} y1={height * p} y2={height * p} stroke="rgba(255,255,255,.04)" strokeWidth="1"/>
+        <line key={p} x1="0" x2={w} y1={height * p} y2={height * p}
+              stroke="rgba(255,255,255,.04)" strokeWidth="1"/>
       ))}
       <path d={area} fill="url(#infra-fill)" />
-      <path d={line} fill="none" stroke="#A78BFA" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={line} fill="none" stroke="#A78BFA" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-// ------------------- Global Nodes panel -------------------
-
-export function NodeRow({ region, location, load, color }) {
+// ── Node row ──────────────────────────────────────────────────────────────────
+function NodeRow({ region, location, load, color }) {
   return (
     <div className="noderow">
       <div className="noderow__icon"><Icon name="server" size={17} /></div>
@@ -133,52 +130,69 @@ export function NodeRow({ region, location, load, color }) {
   );
 }
 
-// ------------------- Live Activity Stream table -------------------
-
-const ACTIVITY_SEED = [
-  ['#EV-0912-A', 'Auth_Service_V2',     'SUCCESS',   '12:42:15.002'],
-  ['#EV-0912-B', 'Storage_Worker_04',   'THROTTLED', '12:41:02.190'],
-  ['#EV-0912-C', 'Kafka_Ingress_Mirror','CRITICAL',  '12:39:55.441'],
-];
-
-export function ActivityTable() {
+// ── Service health row ────────────────────────────────────────────────────────
+function SvcHealthRow({ name, pct, color }) {
   return (
-    <div className="activity">
-      <div className="activity__head">
-        <div className="activity__title">Live Activity Stream</div>
-        <span className="alertpill"><span className="d"/> 2 Alerts</span>
+    <div className="svchealth__row">
+      <div className="svchealth__top">
+        <span className="svchealth__name">{name}</span>
+        <span className="svchealth__pct" style={{ color }}>{pct.toFixed(2)}%</span>
       </div>
-      <div className="activitytable">
-        <div className="activitytable__head" style={{ display: 'contents' }}>
-          <div>Event ID</div>
-          <div>Resource</div>
-          <div>Status</div>
-          <div>Timestamp</div>
-        </div>
-        {ACTIVITY_SEED.map(([id, resource, status, ts]) => (
-          <div key={id} className="activitytable__row" style={{ display: 'contents' }}>
-            <div className="activitytable__id">{id}</div>
-            <div className="activitytable__resource">{resource}</div>
-            <div>
-              <span className={`statuspill status-${status.toLowerCase()}`}>{status}</span>
-            </div>
-            <div className="activitytable__ts">{ts}</div>
-          </div>
-        ))}
+      <div className="svchealth__bar">
+        <i style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );
 }
 
-// ------------------- View -------------------
-
+// ── Main view ─────────────────────────────────────────────────────────────────
 export default function MetricsView() {
-  const reqs    = useCounter(1241000, 800);
-  const latency = useCounter(42, 600);
-  const errRate = useCounter(0.04, 700);
-  const sessions= useCounter(84200, 800);
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
-  const fmtK = (n) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + 'M' : (n / 1000).toFixed(1) + 'k';
+  const fetchSummary = () => {
+    const token = sessionStorage.getItem('fos_token');
+    fetch('/api/metrics/summary', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  };
+
+  useEffect(() => {
+    fetchSummary();
+    const id = setInterval(fetchSummary, 10_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const cards  = data?.statCards  ?? {};
+  const nodes  = data?.nodes      ?? [];
+  const health = data?.serviceHealth ?? [];
+
+  const seedCpu = nodes[0]?.cpuPct ?? 50;
+
+  const reqs    = useCounter(cards.requestCount ?? 0, 800);
+  const latency = useCounter(cards.avgLatencyMs ?? 0, 600);
+  const errRate = useCounter(cards.errorRate    ?? 0, 700);
+  const users   = useCounter(cards.totalUsers   ?? 0, 800);
+
+  const fmtK = (n) => n >= 1_000_000
+    ? (n / 1_000_000).toFixed(1) + 'M'
+    : n >= 1000
+    ? (n / 1000).toFixed(1) + 'k'
+    : Math.round(n).toString();
+
+  const svcColor = (pct) =>
+    pct >= 99 ? 'var(--tertiary-400)' :
+    pct >= 90 ? 'var(--status-warn)'  :
+                'var(--status-error)';
+
+  const nodeColor = (pct) =>
+    pct < 50 ? 'var(--primary-400)' :
+    pct < 80 ? 'var(--secondary-400)' :
+               'var(--status-error)';
 
   return (
     <>
@@ -187,57 +201,66 @@ export default function MetricsView() {
         <p>Real-time health monitoring of global deployment clusters.</p>
       </div>
 
+      {error && (
+        <div className="login-error" style={{ marginBottom: 20 }}>
+          <Icon name="alert-triangle" size={13} /> Could not reach /api/metrics/summary — {error}
+        </div>
+      )}
+
       {/* 4 stat cards */}
       <div className="statgrid statgrid--4">
         <MStatCard
-          label="REQUEST COUNT" value={fmtK(reqs)} unit="/hr" icon="box"
+          label="REQUEST COUNT" value={loading ? '—' : fmtK(reqs)} unit="/total" icon="box"
           footer={{
-            topRight: <span className="deltapill deltapill--cyan"><Icon name="arrow-up-right" size={11}/> +12.5%</span>,
+            topRight: <span className="deltapill deltapill--cyan"><Icon name="activity" size={11}/> HTTP</span>,
             viz: (
               <div className="minibars">
-                <i style={{ height: 12 }}/>
-                <i style={{ height: 22 }}/>
-                <i style={{ height: 14 }}/>
-                <i style={{ height: 26 }} className="hi"/>
+                <i style={{ height: 12 }}/><i style={{ height: 22 }}/>
+                <i style={{ height: 14 }}/><i style={{ height: 26 }} className="hi"/>
               </div>
             )
           }}
         />
         <MStatCard
-          label="RESPONSE TIME" value={latency.toFixed(0)} unit="ms avg" icon="stopwatch"
+          label="AVG RESPONSE TIME" value={loading ? '—' : latency.toFixed(1)} unit="ms" icon="stopwatch"
           footer={{
-            topRight: <span className="deltapill deltapill--pink"><Icon name="zap" size={11}/> FAST</span>,
-            viz: <div className="gradprog"><i style={{ width: '38%' }}/></div>
+            topRight: <span className="deltapill deltapill--pink"><Icon name="zap" size={11}/> LIVE</span>,
+            viz: <div className="gradprog"><i style={{ width: `${Math.min(100, latency / 5)}%` }}/></div>
           }}
         />
         <MStatCard
-          label="ERROR RATE" value={errRate.toFixed(2)} unit="%" icon="alert-octagon"
-          footer={{
-            topRight: <span className="deltapill deltapill--cyan"><Icon name="arrow-down-right" size={11}/> -0.02%</span>,
-            viz: (
-              <div className="dots">
-                <i className="active"/><i/><i/><i/>
-              </div>
-            )
-          }}
-        />
-        <MStatCard
-          label="ACTIVE SESSIONS" value={fmtK(sessions)} icon="users-round"
+          label="ERROR RATE" value={loading ? '—' : errRate.toFixed(3)} unit="%" icon="alert-octagon"
           footer={{
             topRight: (
-              <span style={{ display:'inline-flex',alignItems:'center',gap:6,padding:'3px 10px',borderRadius:99,background:'rgba(34,211,238,.10)',color:'var(--tertiary-400)',font:'500 11px var(--font-body)'}}>
-                <span style={{width:5,height:5,borderRadius:99,background:'var(--tertiary-400)',boxShadow:'0 0 6px var(--tertiary-400)'}}/>
-                Live
+              <span className={`deltapill ${errRate === 0 ? 'deltapill--cyan' : 'deltapill--bad'}`}>
+                <Icon name={errRate === 0 ? 'check' : 'alert-triangle'} size={11}/>
+                {errRate === 0 ? 'CLEAN' : 'ERRORS'}
+              </span>
+            ),
+            viz: (
+              <div className="dots">
+                <i className={errRate === 0 ? 'active' : ''}/><i/><i/><i/>
+              </div>
+            )
+          }}
+        />
+        <MStatCard
+          label="REGISTERED USERS" value={loading ? '—' : fmtK(users)} icon="users-round"
+          footer={{
+            topRight: (
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'3px 10px',
+                borderRadius:99, background:'rgba(34,211,238,.10)', color:'var(--tertiary-400)',
+                font:'500 11px var(--font-body)' }}>
+                <span style={{ width:5, height:5, borderRadius:99, background:'var(--tertiary-400)',
+                  boxShadow:'0 0 6px var(--tertiary-400)' }}/>
+                DB
               </span>
             ),
             viz: (
               <div className="avatarstack">
-                <div className="avatarstack__group">
-                  <div className="a" style={{ backgroundImage: 'url(https://i.pravatar.cc/40?img=24)' }}/>
-                  <div className="a" style={{ backgroundImage: 'url(https://i.pravatar.cc/40?img=32)' }}/>
-                  <div className="a" style={{ backgroundImage: 'url(https://i.pravatar.cc/40?img=47)' }}/>
-                </div>
-                <span className="avatarstack__more">+84k</span>
+                <span className="avatarstack__more" style={{ marginLeft: 0 }}>
+                  {loading ? '…' : `${Math.round(users)} total`}
+                </span>
               </div>
             )
           }}
@@ -250,43 +273,64 @@ export default function MetricsView() {
           <div className="chartcard__head">
             <div>
               <div className="chartcard__title">Infrastructure Load</div>
-              <div className="chartcard__subtitle">Compute vs Memory distribution across nodes.</div>
+              <div className="chartcard__subtitle">
+                CPU load trend — current: {loading ? '…' : `${seedCpu.toFixed(1)}%`}
+              </div>
             </div>
             <div className="segctl">
               <span className="on">Live</span><span>1H</span><span>24H</span>
             </div>
           </div>
           <div style={{ marginTop: 18 }}>
-            <InfraLoadChart height={240} />
+            <InfraLoadChart seedCpu={seedCpu} height={240} />
           </div>
         </div>
 
         <div className="chartcard">
           <div className="chartcard__head" style={{ marginBottom: 10 }}>
             <div>
-              <div className="chartcard__title">Global Nodes</div>
+              <div className="chartcard__title">App Node</div>
               <div className="chartcard__subtitle" style={{ color: 'var(--tertiary-400)' }}>
-                <span style={{
-                  display: 'inline-block', width: 6, height: 6, borderRadius: 99,
-                  background: 'var(--tertiary-400)', marginRight: 7,
-                  boxShadow: '0 0 6px var(--tertiary-400)', verticalAlign: 'middle',
-                }}/>
-                All systems operational
+                <span style={{ display:'inline-block', width:6, height:6, borderRadius:99,
+                  background:'var(--tertiary-400)', marginRight:7,
+                  boxShadow:'0 0 6px var(--tertiary-400)', verticalAlign:'middle' }}/>
+                {loading ? 'Connecting…' : 'System operational'}
               </div>
             </div>
           </div>
           <div>
-            <NodeRow region="US-EAST-1" location="Virginia, USA" load={98.2} color="var(--tertiary-400)" />
-            <NodeRow region="EU-WEST-2" location="London, UK"   load={42.1} color="var(--secondary-400)" />
-            <NodeRow region="AP-SOUTH-1" location="Mumbai, IN"  load={12.5} color="var(--primary-400)" />
+            {loading
+              ? <div style={{ color: 'var(--fg-4)', padding: '12px 0' }}>Loading…</div>
+              : nodes.map(n => (
+                <NodeRow
+                  key={n.region}
+                  region={n.region}
+                  location={`${n.location} · Heap ${n.heapUsedMb}/${n.heapMaxMb} MB`}
+                  load={n.cpuPct}
+                  color={nodeColor(n.cpuPct)}
+                />
+              ))
+            }
           </div>
+
+          {/* Service health */}
+          <div style={{ marginTop: 20 }}>
+            <div className="chartcard__title" style={{ fontSize: 14, marginBottom: 14 }}>Service Health</div>
+            <div className="svchealth">
+              {loading
+                ? <div style={{ color: 'var(--fg-4)' }}>Loading…</div>
+                : health.map(s => (
+                  <SvcHealthRow key={s.name} name={s.name} pct={s.pct} color={svcColor(s.pct)} />
+                ))
+              }
+            </div>
+          </div>
+
           <button className="btn btn--outlined" style={{ width: '100%', marginTop: 22 }}>
             View Network Topology
           </button>
         </div>
       </div>
-
-      <ActivityTable />
     </>
   );
 }

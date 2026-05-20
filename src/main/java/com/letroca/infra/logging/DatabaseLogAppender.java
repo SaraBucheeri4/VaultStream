@@ -7,32 +7,46 @@ import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.AppenderBase;
 import com.letroca.entities.logs.LogEntry;
 import com.letroca.repositories.LogEntryRepository;
-import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
 /**
  * Logback appender that persists WARN and ERROR events to PostgreSQL.
- * Uses lazy Spring context lookup to avoid circular dependency during startup.
+ * The Spring context is injected only after it is fully refreshed to avoid
+ * startup failures caused by early bean-factory access.
  */
 @Component
-public class DatabaseLogAppender extends AppenderBase<ILoggingEvent> implements ApplicationContextAware {
+public class DatabaseLogAppender extends AppenderBase<ILoggingEvent> {
 
-    private static ApplicationContext applicationContext;
     private static volatile LogEntryRepository repository;
 
-    @Override
-    public void setApplicationContext(ApplicationContext ctx) throws BeansException {
-        applicationContext = ctx;
+    /** Called by Spring after the context is fully refreshed — safe to resolve beans here. */
+    @EventListener(ContextRefreshedEvent.class)
+    public void onContextRefreshed(ContextRefreshedEvent event) {
+        ApplicationContext ctx = event.getApplicationContext();
+        if (repository == null) {
+            synchronized (DatabaseLogAppender.class) {
+                if (repository == null) {
+                    repository = ctx.getBean(LogEntryRepository.class);
+                }
+            }
+        }
     }
 
     @Override
     protected void append(ILoggingEvent event) {
-        if (event.getLevel().isGreaterOrEqual(Level.WARN)) {
-            getRepository().save(buildEntry(event));
+        LogEntryRepository repo = repository;
+        if (repo == null || !event.getLevel().isGreaterOrEqual(Level.WARN)) {
+            return;
+        }
+        try {
+            repo.save(buildEntry(event));
+        } catch (Exception ignored) {
+            // never let a log-persistence failure crash the application
         }
     }
 
@@ -49,16 +63,6 @@ public class DatabaseLogAppender extends AppenderBase<ILoggingEvent> implements 
                 .build();
     }
 
-    private LogEntryRepository getRepository() {
-        if (repository == null) {
-            synchronized (DatabaseLogAppender.class) {
-                if (repository == null && applicationContext != null) {
-                    repository = applicationContext.getBean(LogEntryRepository.class);
-                }
-            }
-        }
-        return repository;
-    }
 
     private String truncate(String s, int max) {
         return s != null && s.length() > max ? s.substring(0, max) : s;

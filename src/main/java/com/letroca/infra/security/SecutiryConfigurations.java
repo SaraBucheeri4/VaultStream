@@ -51,6 +51,7 @@ public class SecutiryConfigurations {
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/otp/generate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/otp/verify").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/metrics/summary").permitAll()
                         // Actuator health/metrics — open so Prometheus can scrape without auth
                         .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                         // Swagger UI

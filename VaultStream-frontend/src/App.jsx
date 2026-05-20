@@ -5,7 +5,9 @@ import { TopNav, Sidebar } from "./components/Shell.jsx";
 import Login from "./components/Login.jsx";
 import LogsView from "./components/LogsView.jsx";
 import MetricsView from "./components/MetricsView.jsx";
-import Placeholder from "./components/Placeholder.jsx";
+import CommandView from "./components/CommandView.jsx";
+import AssetsView from "./components/AssetsView.jsx";
+import SecurityView from "./components/SecurityView.jsx";
 import Silk from "./components/Silk.jsx";
 
 // Map path → main screen label (used as data-screen-label on <main>).
@@ -76,33 +78,9 @@ export default function App() {
           <Route index element={<Navigate to="/logs" replace />} />
           <Route path="/logs" element={<LogsView />} />
           <Route path="/analytics" element={<MetricsView />} />
-          <Route
-            path="/command"
-            element={
-              <Placeholder
-                title="Command"
-                subtitle="Operator command surface — coming soon."
-              />
-            }
-          />
-          <Route
-            path="/asset-registry"
-            element={
-              <Placeholder
-                title="Assets"
-                subtitle="Asset registry — coming soon."
-              />
-            }
-          />
-          <Route
-            path="/security"
-            element={
-              <Placeholder
-                title="Security"
-                subtitle="Access, audit, and policy — coming soon."
-              />
-            }
-          />
+          <Route path="/command" element={<CommandView />} />
+          <Route path="/asset-registry" element={<AssetsView />} />
+          <Route path="/security" element={<SecurityView />} />
           <Route path="*" element={<Navigate to="/logs" replace />} />
         </Route>
       </Routes>

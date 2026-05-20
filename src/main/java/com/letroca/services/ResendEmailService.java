@@ -1,10 +1,14 @@
 package com.letroca.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -12,6 +16,7 @@ import java.util.Map;
 @Service
 public class ResendEmailService {
 
+    private static final Logger log = LoggerFactory.getLogger(ResendEmailService.class);
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
 
     @Value("${resend.api.key}")
@@ -39,7 +44,13 @@ public class ResendEmailService {
                 "html", html
         );
 
-        restTemplate.postForObject(RESEND_API_URL, new HttpEntity<>(body, headers), Map.class);
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(RESEND_API_URL, new HttpEntity<>(body, headers), (Class<Map<String, Object>>) (Class<?>) Map.class);
+            log.info("Resend response {} for to={} from={}", response.getStatusCode(), toEmail, fromEmail);
+        } catch (HttpClientErrorException e) {
+            log.error("Resend rejected email to={} status={} body={}", toEmail, e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to send email: " + e.getResponseBodyAsString(), e);
+        }
     }
 
     private String buildEmailHtml(String code, String purpose) {
