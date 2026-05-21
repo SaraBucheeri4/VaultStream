@@ -1,6 +1,6 @@
-# VaultStream — Spring Boot Auth + Logging & Monitoring
+# VaultStream — Secure Auth + Logging & Monitoring
 
-A Spring Boot 3.2 application with JWT authentication, centralized structured logging, ELK stack integration, and Prometheus metrics.
+JWT authentication with refresh token rotation, OTP verification, Redis session management, account locking, centralized structured logging (ELK), and Prometheus metrics.
 
 ---
 
@@ -8,9 +8,10 @@ A Spring Boot 3.2 application with JWT authentication, centralized structured lo
 
 | Component | Purpose | Port |
 |---|---|---|
-| Spring Boot 3.2 | Application | 8080 |
+| Spring Boot 3.2 | Application | **8081** |
 | PostgreSQL 16 | App data + log storage | 5432 |
-| Logstash 8.13 | Log ingestion pipeline | 5000 (TCP) |
+| Redis 7 | OTP / rate-limit / token blacklist | 6379 |
+| Logstash 8.13 | Log ingestion pipeline | 5001 (host → 5000 container) |
 | Elasticsearch 8.13 | Log search / indexing | 9200 |
 | Kibana 8.13 | Log visualisation UI | 5601 |
 | Prometheus 2.51 | Metrics scraping | 9090 |
@@ -21,24 +22,35 @@ A Spring Boot 3.2 application with JWT authentication, centralized structured lo
 
 - Java 21
 - Maven 3.9+
-- Docker + Docker Compose (for full stack)
+- Docker + Docker Compose
 
 ---
 
 ## Quick start
 
-### Local development (no Docker)
+### 1. Copy and fill in the env file
 
 ```bash
-# Requires PostgreSQL on localhost:5432, database "letroca"
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+cp .env.example .env
+# Edit .env — set DB_USER, DB_PASSWORD, JWT_SECRET, RESEND_API_KEY, RESEND_FROM_EMAIL
 ```
 
-### Full stack with Docker Compose
+### 2. Start the full stack
 
 ```bash
 docker compose up --build
-# App ready when logs show: "Started LetrocaApplication"
+# App ready when logs show: "Started VaultstreamApplication"
+```
+
+The app is available at **http://localhost:8081**.  
+Swagger UI: **http://localhost:8081/swagger-ui.html**
+
+### Local development (no Docker)
+
+Requires PostgreSQL on `localhost:5432` with a database named `vaultstream` and Redis on `localhost:6379`.
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 ---
@@ -47,14 +59,18 @@ docker compose up --build
 
 | Variable | Default | Description |
 |---|---|---|
-| `JWT_SECRET` | `my-secret-key` | **Override in production** |
+| `JWT_SECRET` | `my-secret-key` | **Always override in production** |
 | `DB_HOST` | `localhost` | PostgreSQL host |
 | `DB_PORT` | `5432` | PostgreSQL port |
-| `DB_NAME` | `letroca` | Database name |
-| `DB_USER` | `postgres` | Database user |
-| `DB_PASSWORD` | `root` | Database password |
+| `DB_NAME` | `vaultstream` | Database name |
+| `DB_USER` | `vaultstream_user` | Database user |
+| `DB_PASSWORD` | `secret` | Database password |
+| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
 | `LOGSTASH_HOST` | `localhost` | Logstash TCP host |
 | `LOGSTASH_PORT` | `5000` | Logstash TCP port |
+| `RESEND_API_KEY` | *(required)* | Resend.com API key for OTP emails |
+| `RESEND_FROM_EMAIL` | *(required)* | Sender address for OTP emails |
 
 ---
 
@@ -64,67 +80,105 @@ docker compose up --build
 
 ```bash
 # Register
-curl -X POST http://localhost:8080/auth/register \
+curl -X POST http://localhost:8081/auth/register \
   -H "Content-Type: application/json" \
   -d '{"name":"Alice","email":"alice@example.com","password":"secret","role":"USER"}'
 
-# Login — returns JWT and X-Correlation-ID header
-curl -X POST http://localhost:8080/auth/login \
+# Login — returns accessToken + refreshToken
+curl -X POST http://localhost:8081/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"alice@example.com","password":"secret"}'
+# Response: {"accessToken":"...","refreshToken":"..."}
+
+# Rotate refresh token
+curl -X POST http://localhost:8081/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<your-refresh-token>"}'
+
+# Logout (blacklists current access token)
+curl -X POST http://localhost:8081/auth/logout \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Global logout (revokes all sessions)
+curl -X POST http://localhost:8081/auth/logout/all \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### OTP (no auth required)
+
+```bash
+# Request OTP — sent via email
+curl -X POST http://localhost:8081/api/otp/generate \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","purpose":"LOGIN"}'
+
+# Verify OTP
+curl -X POST http://localhost:8081/api/otp/verify \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","purpose":"LOGIN","code":"123456"}'
 ```
 
 ### Logs (JWT required)
 
 ```bash
-TOKEN="your-jwt-here"
+ACCESS_TOKEN="your-access-token-here"
 
 # All logs (paginated, newest first)
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs?page=0&size=20"
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs?page=0&size=20"
 
-# Filter: level, dates, keyword, correlationId
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs/search?level=ERROR"
+# Filter by level, date range, keyword, or correlationId
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs/search?level=ERROR"
 
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs/search?keyword=login&from=2024-01-01T00:00:00Z"
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs/search?keyword=login&from=2024-01-01T00:00:00Z"
 
 # Statistics
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs/stats"
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs/stats"
 
-# Trace a full request
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs/correlation/550e8400-e29b-41d4-a716-446655440000"
+# Trace a full request by correlation ID
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs/correlation/550e8400-e29b-41d4-a716-446655440000"
 ```
 
 ### Actuator / Metrics (no auth required)
 
 ```bash
-curl http://localhost:8080/actuator/health
-curl http://localhost:8080/actuator/prometheus | grep auth_
+curl http://localhost:8081/actuator/health
+curl http://localhost:8081/actuator/prometheus | grep auth_
 ```
-
-### Swagger UI
-
-[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 
 ---
 
 ## Correlation ID
 
-Every HTTP request is automatically assigned a UUID correlation ID:
+Every request is assigned a UUID correlation ID automatically:
 
-- Generated by `CorrelationIdFilter` if the client doesn't supply one
-- Stored in SLF4J MDC → appears in every log line for that request
-- Returned in the `X-Correlation-ID` response header
-- Can be forwarded by clients/gateways to link distributed traces
+- Generated by `CorrelationIdFilter` if not supplied by the client
+- Stored in SLF4J MDC — appears on every log line for that request
+- Returned to the caller in the `X-Correlation-ID` response header
+- Included in all `4xx`/`5xx` error response bodies as `correlationId`
 
 ```bash
-# Supply your own correlation ID
-curl -H "X-Correlation-ID: my-trace-id" http://localhost:8080/auth/login ...
+# Supply your own to link distributed traces
+curl -H "X-Correlation-ID: my-trace-id" \
+  -X POST http://localhost:8081/auth/login ...
 ```
+
+---
+
+## Security features
+
+| Feature | Implementation |
+|---|---|
+| JWT access tokens | 15-minute expiry, HS256 |
+| Refresh token rotation | 7-day expiry; reuse triggers full session revocation |
+| Token blacklist | Redis key with TTL = remaining token lifetime |
+| OTP verification | 6-digit, 5-minute expiry, rate-limited (5/hour), Redis-backed |
+| Account locking | 5 failed attempts → 15-minute lockout, stored in DB |
+| Rate limiting | 5 requests / 15 min per IP on `/auth/**`, Redis-backed |
 
 ---
 
@@ -132,7 +186,7 @@ curl -H "X-Correlation-ID: my-trace-id" http://localhost:8080/auth/login ...
 
 ```
 Spring Boot app
-  ├─► LogstashTcpSocketAppender (port 5000, JSON over TCP)
+  ├─► LogstashTcpSocketAppender (container port 5000, JSON over TCP)
   │     └─► Logstash → Elasticsearch (index: vaultstream-logs-YYYY.MM.dd)
   │                         └─► Kibana (port 5601)
   ├─► DatabaseLogAppender (WARN + ERROR only → PostgreSQL log_entries)
@@ -161,7 +215,7 @@ Prometheus UI: [http://localhost:9090](http://localhost:9090)
 1. Open [http://localhost:5601](http://localhost:5601)
 2. **Stack Management → Index Patterns → Create**: `vaultstream-logs-*`
 3. Set time field to `@timestamp`
-4. Go to **Discover** and start querying
+4. Go to **Discover**
 
 Useful KQL queries:
 ```
@@ -177,16 +231,16 @@ message: *login*
 
 ```bash
 # 1. Trigger a failed login (generates a WARN log)
-curl -X POST http://localhost:8080/auth/login \
+curl -X POST http://localhost:8081/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"x@x.com","password":"wrong"}'
 
-# 2. Check Elasticsearch
+# 2. Check Elasticsearch received it
 curl "http://localhost:9200/vaultstream-logs-*/_search?q=level:WARN&pretty"
 
-# 3. Check the DB via REST
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/logs/search?level=WARN"
+# 3. Check the DB via REST (requires a valid token)
+curl -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "http://localhost:8081/api/logs/search?level=WARN"
 
 # 4. Check Prometheus scraped it
 curl "http://localhost:9090/api/v1/query?query=auth_login_failure_total"
@@ -194,10 +248,21 @@ curl "http://localhost:9090/api/v1/query?query=auth_login_failure_total"
 
 ---
 
+## Database migrations (Flyway)
+
+| Version | Description |
+|---|---|
+| V1 | Create `users` table |
+| V2 | Create `log_entries` table |
+| V3 | Create `otp_codes` table (audit — no plaintext codes) |
+| V4 | Create `refresh_tokens` table |
+| V5 | Add `failed_attempts` + `locked_until` to `users` |
+
+---
+
 ## Built with
 
-- Spring Boot 3.2 · Spring Security · Spring Data JPA
-- Auth0 java-jwt · Flyway · Lombok
+- Spring Boot 3.2 · Spring Security · Spring Data JPA · Spring Data Redis
+- Auth0 java-jwt · Flyway · Lombok · springdoc-openapi (Swagger UI)
 - logstash-logback-encoder · Spring Boot Actuator · Micrometer Prometheus
-- springdoc-openapi (Swagger UI)
-- PostgreSQL · Elasticsearch · Logstash · Kibana · Prometheus
+- PostgreSQL · Redis · Elasticsearch · Logstash · Kibana · Prometheus

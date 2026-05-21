@@ -21,9 +21,6 @@ public class OTP {
     @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false, length = 6)
-    private String code;
-
     @Column(nullable = false)
     private Instant expiresAt;
 

@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vaultstream}
-    username: ${DB_USER:sara_admin}
-    password: ${DB_PASSWORD:qwerty}
+    username: ${DB_USER:vaultstream_user}
+    password: ${DB_PASSWORD:secret}
 
   jpa:
     hibernate:

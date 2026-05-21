@@ -12,6 +12,7 @@ import com.vaultstream.repositories.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -49,6 +50,7 @@ public class AuthenticationController {
         this.metrics               = metrics;
     }
 
+    @Transactional
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Authenticate and receive JWT access + refresh tokens")
     public ResponseEntity<?> login(@RequestBody AuthenticationDTO data) {

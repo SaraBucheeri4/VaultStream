@@ -59,10 +59,9 @@ public class OtpService {
             redis.opsForValue().increment(rateLimitKey);
         }
 
-        // Persist for audit trail
+        // Persist audit record — code is never stored, only kept in Redis
         otpRepository.save(OTP.builder()
                 .userId(userId)
-                .code(code)
                 .expiresAt(Instant.now().plus(Duration.ofMinutes(expiryMinutes)))
                 .createdAt(Instant.now())
                 .build());
