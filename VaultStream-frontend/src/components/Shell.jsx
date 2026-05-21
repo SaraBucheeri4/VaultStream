@@ -11,7 +11,6 @@ export function TopNav({ user, onSignOut }) {
   const tabs = [
     { id: "overview", label: "Overview", path: "/analytics" },
     { id: "logs", label: "System Logs", path: "/logs" },
-    { id: "security", label: "Security", path: "/security" },
   ];
   const activeTabId = tabs.find((t) => t.path === pathname)?.id;
 
@@ -109,11 +108,8 @@ export function Sidebar({ activeNodes = 12, onSignOut }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const items = [
-    { path: "/command", icon: "grid", label: "Command" },
     { path: "/analytics", icon: "line-chart", label: "Analytics" },
-    { path: "/asset-registry", icon: "wallet", label: "Assets" },
     { path: "/logs", icon: "database", label: "Logs" },
-    { path: "/security", icon: "shield-check", label: "Security" },
   ];
 
   return (

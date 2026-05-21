@@ -5,20 +5,11 @@ import { TopNav, Sidebar } from "./components/Shell.jsx";
 import Login from "./components/Login.jsx";
 import LogsView from "./components/LogsView.jsx";
 import MetricsView from "./components/MetricsView.jsx";
-import CommandView from "./components/CommandView.jsx";
-import AssetsView from "./components/AssetsView.jsx";
-import SecurityView from "./components/SecurityView.jsx";
 import Silk from "./components/Silk.jsx";
 
-// Map path → main screen label (used as data-screen-label on <main>).
-// Note: /asset-registry rather than /assets to avoid colliding with Vite's
-// /assets/ build output directory in production.
 const SCREEN_LABELS = {
   "/logs": "Logs View",
   "/analytics": "Metrics View",
-  "/command": "Command View",
-  "/asset-registry": "Assets View",
-  "/security": "Security View",
 };
 
 function Layout({ user, onSignOut }) {
@@ -78,9 +69,6 @@ export default function App() {
           <Route index element={<Navigate to="/logs" replace />} />
           <Route path="/logs" element={<LogsView />} />
           <Route path="/analytics" element={<MetricsView />} />
-          <Route path="/command" element={<CommandView />} />
-          <Route path="/asset-registry" element={<AssetsView />} />
-          <Route path="/security" element={<SecurityView />} />
           <Route path="*" element={<Navigate to="/logs" replace />} />
         </Route>
       </Routes>
