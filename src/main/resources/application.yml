@@ -39,6 +39,9 @@ otp:
   max-attempts: 5
   rate-limit-per-hour: 5
 
+pin:
+  pepper: ${PIN_PEPPER:changeme-set-PIN_PEPPER-env-var}
+
 # JWT secret — always override via environment variable in production
 api:
   security:

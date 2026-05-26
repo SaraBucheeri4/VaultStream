@@ -35,3 +35,7 @@ build/
 ### Environment ###
 .env
 src/main/resources/application-local.yml
+
+### Runtime logs ###
+logs/
+*.log

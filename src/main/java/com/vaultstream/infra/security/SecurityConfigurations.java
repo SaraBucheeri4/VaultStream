@@ -57,6 +57,12 @@ public class SecurityConfigurations {
                         .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                         // Swagger UI
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // Device management — authenticated
+                        .requestMatchers(HttpMethod.GET,    "/api/devices").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/devices/**").authenticated()
+                        // PIN management — authenticated
+                        .requestMatchers(HttpMethod.POST, "/api/pin/setup").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/pin/verify").authenticated()
                         .anyRequest().authenticated()
                 )
                 .build();

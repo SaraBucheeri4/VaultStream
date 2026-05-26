@@ -45,6 +45,9 @@ public class User implements UserDetails {
     @Column
     private Instant lockedUntil;
 
+    @Column(name = "pin_hash", length = 255)
+    private String pinHash;
+
     public User(String name, String email, String password, UserRole role) {
         this.name     = name;
         this.email    = email;
