@@ -126,3 +126,4 @@ volumes:
   elasticsearch_data:
   prometheus_data:
   redis_data:
+

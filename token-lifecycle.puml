@@ -1,0 +1,129 @@
+@startuml Token Lifecycle
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 12
+
+skinparam activity {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+  StartColor #e94560
+  EndColor #e94560
+  BarColor #533483
+}
+
+skinparam activityDiamond {
+  BackgroundColor #0f3460
+  BorderColor #e94560
+  FontColor #e0e0e0
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+skinparam note {
+  BackgroundColor #0d1b2a
+  BorderColor #533483
+  FontColor #a0c4ff
+}
+
+skinparam swimlane {
+  BorderColor #533483
+  TitleFontColor #a0c4ff
+  BackgroundColor #0d1b2a
+}
+
+title VaultStream — Token Lifecycle
+
+|Client|
+start
+:User logs in successfully;
+
+|Server|
+:Generate **Access Token**\n(JWT · HS256 · 15 min TTL);
+:Generate **Refresh Token**\n(UUID · 7 day TTL)\nStored in PostgreSQL;
+
+|Client|
+:Store both tokens\nin sessionStorage;
+
+repeat
+
+  :Send API request\nwith **Bearer <AccessToken>**;
+
+  |Server|
+  :Check Redis **blacklist**;
+
+  if (Token blacklisted?) then (yes)
+    :Reject → 401;
+    |Client|
+    :Force logout;
+    stop
+  endif
+
+  :Validate JWT signature\n& expiry;
+
+  if (JWT valid?) then (no)
+    if (Access token expired?) then (yes)
+
+      |Client|
+      :Send **POST /auth/refresh**\nwith RefreshToken;
+
+      |Server|
+      :Look up RefreshToken in DB;
+
+      if (Token revoked?) then (yes)
+        note right : Token reuse attack detected
+        :Revoke **ALL** user sessions in DB;
+        :Return 401;
+        |Client|
+        :Force re-login;
+        stop
+      endif
+
+      if (Token expired?) then (yes)
+        :Return 401;
+        |Client|
+        :Force re-login;
+        stop
+      endif
+
+      |Server|
+      :Mark old token **revoked** in DB;
+      :Issue new **Access Token** (JWT · 15 min);
+      :Issue new **Refresh Token** (UUID · 7 days);
+      note right : Rotation — old refresh\ntoken can never be reused
+      :Return new token pair;
+
+      |Client|
+      :Replace tokens in sessionStorage;
+
+    else (no — invalid signature)
+      :Force re-login;
+      stop
+    endif
+
+  else (yes — valid)
+    :Process request ✓;
+  endif
+
+repeat while (User continues session?) is (yes)
+-> no;
+
+|Client|
+:User logs out\nPOST /auth/logout;
+
+|Server|
+:Add AccessToken to\nRedis **blacklist**\n(TTL = remaining JWT expiry);
+:Mark all RefreshTokens\n**revoked** in PostgreSQL;
+note right : Both stores updated atomically\nso token cannot be reused
+
+|Client|
+:Clear sessionStorage\n& localStorage;
+
+stop
+
+@enduml

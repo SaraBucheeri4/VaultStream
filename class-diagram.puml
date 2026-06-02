@@ -1,0 +1,314 @@
+@startuml VaultStream Class Diagram
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 11
+
+skinparam class {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+  HeaderBackgroundColor #0f3460
+  ArrowColor #e94560
+  AttributeFontColor #e0e0e0
+}
+
+skinparam package {
+  BackgroundColor #0d1b2a
+  BorderColor #533483
+  FontColor #a0c4ff
+}
+
+skinparam enum {
+  BackgroundColor #0f3460
+  BorderColor #e94560
+  FontColor #e0e0e0
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+left to right direction
+scale 2200 width
+
+title VaultStream — Class Diagram
+
+' ══════════════════════════════════════════
+' ENUMS
+' ══════════════════════════════════════════
+package "Enums" {
+  enum UserRole {
+    ADMIN
+    USER
+    + getRole() : String
+  }
+
+  enum OtpPurpose {
+    LOGIN
+    REGISTER
+  }
+}
+
+' ══════════════════════════════════════════
+' ENTITIES
+' ══════════════════════════════════════════
+package "Entities" {
+
+  class User {
+    - id : String
+    - name : String
+    - email : String
+    - password : String
+    - role : UserRole
+    - failedAttempts : int
+    - lockedUntil : Instant
+    - pinHash : String
+    + recordFailedAttempt() : void
+    + resetFailedAttempts() : void
+    + isAccountNonLocked() : boolean
+    + getAuthorities() : Collection
+    + getUsername() : String
+  }
+
+  class RefreshToken {
+    - id : String
+    - userId : String
+    - token : String
+    - expiresAt : Instant
+    - revoked : boolean
+    - createdAt : Instant
+  }
+
+  class OTP {
+    - id : Long
+    - userId : String
+    - expiresAt : Instant
+    - used : boolean
+    - createdAt : Instant
+  }
+
+  class TrustedDevice {
+    - id : Long
+    - userId : String
+    - deviceName : String
+    - userAgent : String
+    - ipAddress : String
+    - lastUsed : Instant
+    - trusted : boolean
+    - createdAt : Instant
+  }
+
+  class LoginAuditLog {
+    - id : Long
+    - userId : String
+    - email : String
+    - ipAddress : String
+    - userAgent : String
+    - status : String
+    - failureReason : String
+    - correlationId : String
+    - createdAt : Instant
+  }
+
+  class LogEntry {
+    - id : Long
+    - timestamp : Instant
+    - level : String
+    - message : String
+    - correlationId : String
+    - serviceName : String
+    - loggerName : String
+    - threadName : String
+    - stackTrace : String
+  }
+}
+
+' ══════════════════════════════════════════
+' REPOSITORIES
+' ══════════════════════════════════════════
+package "Repositories" {
+
+  interface UserRepository {
+    + findByEmail(email : String) : User
+    + findUserById(id : String) : Optional<User>
+  }
+
+  interface RefreshTokenRepository {
+    + findByToken(token : String) : Optional<RefreshToken>
+    + revokeAllByUserId(userId : String) : void
+  }
+
+  interface OtpRepository {
+    + save(otp : OTP) : OTP
+  }
+
+  interface TrustedDeviceRepository {
+    + findByUserIdAndIpAddress(userId, ip) : Optional<TrustedDevice>
+    + existsByUserIdAndIpAddressAndTrustedTrue(userId, ip) : boolean
+    + findByUserIdOrderByLastUsedDesc(userId) : List<TrustedDevice>
+    + revokeByIdAndUserId(id, userId) : int
+  }
+
+  interface LoginAuditRepository {
+    + findDistinctSuccessIpsByUserId(userId) : List<String>
+    + countByIpAddressAndStatusAndCreatedAtAfter(ip, status, since) : long
+    + countByUserIdAndStatusAndCreatedAtAfter(userId, status, since) : long
+  }
+
+  interface LogEntryRepository {
+    + findAll(pageable) : Page<LogEntry>
+    + search(level, service, from, to, keyword, corrId, pageable) : Page<LogEntry>
+    + findByCorrelationId(corrId, pageable) : Page<LogEntry>
+    + countByLevel() : List<Object[]>
+  }
+}
+
+' ══════════════════════════════════════════
+' SERVICES
+' ══════════════════════════════════════════
+package "Services" {
+
+  class AuthenticationService {
+    - userRepository : UserRepository
+    + loadUserByUsername(email : String) : UserDetails
+  }
+
+  class TokenService {
+    - secret : String
+    - refreshTokenRepository : RefreshTokenRepository
+    - redis : StringRedisTemplate
+    + generateAccessToken(user : User) : String
+    + generateRefreshToken(user : User) : String
+    + rotateRefreshToken(oldToken, user) : String[]
+    + blacklistToken(token : String) : void
+    + validateToken(token : String) : String
+    + revokeAllTokens(userId : String) : void
+    + findRefreshToken(token : String) : RefreshToken
+  }
+
+  class OtpService {
+    - redis : StringRedisTemplate
+    - emailService : ResendEmailService
+    - otpRepository : OtpRepository
+    + generate(userId, email, purpose : OtpPurpose) : void
+    + verify(email, purpose : OtpPurpose, code) : boolean
+  }
+
+  class LoginAuditService {
+    - auditRepository : LoginAuditRepository
+    + recordSuccess(userId, email, ip, userAgent) : void
+    + recordFailure(userId, email, ip, userAgent, reason) : void
+    + recordLocked(email, ip, userAgent) : void
+    + recordLogout(userId, ip, userAgent) : void
+  }
+
+  class DeviceTrustService {
+    - deviceRepository : TrustedDeviceRepository
+    - eventLogger : SecurityEventLogger
+    + isTrusted(userId, ip) : boolean
+    + registerTrustedDevice(userId, ip, userAgent) : void
+    + revoke(deviceId, userId) : boolean
+    + listForUser(userId) : List<TrustedDevice>
+    + touchLastUsed(userId, ip) : void
+  }
+
+  class PinService {
+    - pepper : String
+    - userRepository : UserRepository
+    - eventLogger : SecurityEventLogger
+    + setupPin(user : User, rawPin : String) : void
+    + verifyPin(user : User, rawPin, ip) : boolean
+    + hasPin(user : User) : boolean
+  }
+
+  class SuspiciousLoginService {
+    - auditRepository : LoginAuditRepository
+    - deviceRepository : TrustedDeviceRepository
+    - eventLogger : SecurityEventLogger
+    + checkAndReport(userId, email, ip) : boolean
+    + isNewDevice(userId, ip) : boolean
+    + isNewIpForUser(userId, ip) : boolean
+    + hasRapidLoginAttempts(ip) : boolean
+    + hasMultipleFailedLogins(userId) : boolean
+  }
+
+  class LogService {
+    - repository : LogEntryRepository
+    + findAll(pageable) : Page<LogEntryResponseDTO>
+    + search(level, service, from, to, keyword, corrId, pageable) : Page<LogEntryResponseDTO>
+    + findByCorrelationId(corrId) : List<LogEntryResponseDTO>
+    + getStats() : LogStatsDTO
+  }
+
+  class ResendEmailService {
+    + sendOtpEmail(email, code, purpose) : void
+  }
+}
+
+' ══════════════════════════════════════════
+' SECURITY / INFRA
+' ══════════════════════════════════════════
+package "Security & Infra" {
+
+  class SecurityFilter {
+    - tokenService : TokenService
+    - userRepository : UserRepository
+    - redis : StringRedisTemplate
+    + doFilterInternal(req, res, chain) : void
+  }
+
+  class RateLimitingFilter {
+    - redis : StringRedisTemplate
+    + doFilterInternal(req, res, chain) : void
+  }
+
+  class SecurityEventLogger {
+    + emit(type, userId, ip, severity) : void
+    + emit(type, userId, ip, severity, detail) : void
+  }
+}
+
+' ══════════════════════════════════════════
+' RELATIONSHIPS — Enums
+' ══════════════════════════════════════════
+User --> UserRole : role
+OtpService ..> OtpPurpose : uses
+
+' ── Entities: FK references (logical) ──
+User "1" o-- "0..*" RefreshToken  : userId
+User "1" o-- "0..*" OTP           : userId
+User "1" o-- "0..*" TrustedDevice : userId
+User "1" o-- "0..*" LoginAuditLog : userId (nullable)
+
+' ── Services → Repositories ─────────────
+AuthenticationService --> UserRepository
+TokenService          --> RefreshTokenRepository
+OtpService            --> OtpRepository
+OtpService            --> ResendEmailService
+LoginAuditService     --> LoginAuditRepository
+DeviceTrustService    --> TrustedDeviceRepository
+DeviceTrustService    --> SecurityEventLogger
+PinService            --> UserRepository
+PinService            --> SecurityEventLogger
+SuspiciousLoginService --> LoginAuditRepository
+SuspiciousLoginService --> TrustedDeviceRepository
+SuspiciousLoginService --> SecurityEventLogger
+LogService            --> LogEntryRepository
+
+' ── Repositories → Entities ─────────────
+UserRepository        ..> User
+RefreshTokenRepository ..> RefreshToken
+OtpRepository         ..> OTP
+TrustedDeviceRepository ..> TrustedDevice
+LoginAuditRepository  ..> LoginAuditLog
+LogEntryRepository    ..> LogEntry
+
+' ── Security filters → Services ─────────
+SecurityFilter        --> TokenService
+SecurityFilter        --> UserRepository
+RateLimitingFilter    ..> TokenService : uses Redis
+
+@enduml

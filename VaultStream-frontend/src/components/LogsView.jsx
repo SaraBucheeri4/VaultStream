@@ -87,12 +87,25 @@ function apiLogsToRows(entries) {
   }));
 }
 
+const LEVELS = ['All Levels', 'INFO', 'WARN', 'ERROR', 'DEBUG'];
+const TIME_WINDOWS = ['Last 15m', 'Last 1h', 'Last 6h', 'Last 24h'];
+
+function withinWindow(ts, window) {
+  const ms = { 'Last 15m': 15*60*1000, 'Last 1h': 60*60*1000, 'Last 6h': 6*60*60*1000, 'Last 24h': 24*60*60*1000 };
+  return Date.now() - ts.getTime() <= (ms[window] ?? Infinity);
+}
+
 export default function LogsView() {
   const [logs, setLogs] = useState(() => seedLogs(6));
   const [streaming, setStreaming] = useState(true);
   const [totalLogs, setTotalLogs] = useState(1284502);
   const [page, setPage] = useState(1);
-  const [liveMode, setLiveMode] = useState(false); // true = backend connected
+  const [liveMode, setLiveMode] = useState(false);
+  const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState('All Levels');
+  const [levelOpen, setLevelOpen] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('Last 15m');
+  const [timeOpen, setTimeOpen] = useState(false);
 
   // Initial fetch from backend
   useEffect(() => {
@@ -145,6 +158,28 @@ export default function LogsView() {
       return () => clearInterval(t);
     }
   }, [streaming, liveMode]);
+
+  const filteredLogs = logs.filter(l => {
+    if (levelFilter !== 'All Levels' && l.level !== levelFilter) return false;
+    if (!withinWindow(l.ts, timeFilter)) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      if (!l.msg.toLowerCase().includes(q) && !l.cid.toLowerCase().includes(q) && !l.svc.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  function handleExport() {
+    const header = 'Timestamp,Level,Service,Message,CorrelationID\n';
+    const rows = filteredLogs.map(l =>
+      `"${tsString(l.ts)}","${l.level}","${l.svc}","${l.msg.replace(/"/g,'""')}","${l.cid}"`
+    ).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `vaultstream-logs-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Mini bar chart values for "Logs Volume (24h)"
   const volumes = [38, 60, 72, 88, 78, 110, 124, 96, 64, 92, 142, 128, 84]; // 00:00 → NOW
@@ -202,11 +237,46 @@ export default function LogsView() {
         <div className="filterbar__filter-icon"><Icon name="sliders" size={16} /></div>
         <div className="filterbar__search">
           <Icon name="search" size={14} style={{ color: 'var(--fg-4)' }} />
-          <input placeholder="Search logs by correlation ID, message, or service…" />
+          <input
+            placeholder="Search logs by correlation ID, message, or service…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--fg-4)', padding:'0 4px', lineHeight:1 }}>×</button>
+          )}
         </div>
-        <button className="btn btn--secondary">All Levels <Icon name="chevron-down" size={12} /></button>
-        <button className="btn btn--secondary"><Icon name="clock" size={14} /> Last 15m</button>
-        <button className="btn btn--primary">Export</button>
+        <div style={{ position: 'relative' }}>
+          <button className="btn btn--secondary" onClick={() => { setLevelOpen(o => !o); setTimeOpen(false); }}>
+            {levelFilter} <Icon name="chevron-down" size={12} />
+          </button>
+          {levelOpen && (
+            <div className="filter-dropdown">
+              {LEVELS.map(l => (
+                <div key={l} className={`filter-dropdown__item ${l === levelFilter ? 'active' : ''}`}
+                     onClick={() => { setLevelFilter(l); setLevelOpen(false); }}>
+                  {l}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <button className="btn btn--secondary" onClick={() => { setTimeOpen(o => !o); setLevelOpen(false); }}>
+            <Icon name="clock" size={14} /> {timeFilter}
+          </button>
+          {timeOpen && (
+            <div className="filter-dropdown">
+              {TIME_WINDOWS.map(t => (
+                <div key={t} className={`filter-dropdown__item ${t === timeFilter ? 'active' : ''}`}
+                     onClick={() => { setTimeFilter(t); setTimeOpen(false); }}>
+                  {t}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button className="btn btn--primary" onClick={handleExport}>Export</button>
       </div>
 
       <div className="logcard">
@@ -230,15 +300,18 @@ export default function LogsView() {
             <div>Message</div>
             <div>Correlation ID</div>
           </div>
-          {logs.map(l => (
-            <div key={l.id} className="logtable__row">
-              <div className="logtable__ts">{tsString(l.ts)}</div>
-              <div><LevelBadge level={l.level} /></div>
-              <div className="logtable__svc">{l.svc}</div>
-              <div>{l.msg}</div>
-              <div className="logtable__cid">{l.cid}</div>
-            </div>
-          ))}
+          {filteredLogs.length === 0
+            ? <div className="logtable__empty">No logs match the current filters.</div>
+            : filteredLogs.map(l => (
+              <div key={l.id} className="logtable__row">
+                <div className="logtable__ts">{tsString(l.ts)}</div>
+                <div><LevelBadge level={l.level} /></div>
+                <div className="logtable__svc">{l.svc}</div>
+                <div>{l.msg}</div>
+                <div className="logtable__cid">{l.cid}</div>
+              </div>
+            ))
+          }
         </div>
 
         <div className="logcard__foot">
@@ -303,9 +376,6 @@ export default function LogsView() {
               </div>
             ))}
           </div>
-          <button className="btn btn--outlined" style={{ width: '100%', marginTop: 18 }}>
-            View Cluster Topology
-          </button>
         </div>
       </div>
     </>

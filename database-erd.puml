@@ -1,0 +1,111 @@
+@startuml VaultStream ERD
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #070505
+skinparam defaultFontSize 12
+
+skinparam entity {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+  HeaderBackgroundColor #0f3460
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+title VaultStream — Database ERD
+
+' ─────────────────────────────────────────
+entity "users" as USERS {
+  * id : TEXT <<PK>>
+  --
+  * name : TEXT
+  * email : TEXT <<UNIQUE>>
+  * password : TEXT
+  * role : TEXT
+  * failed_attempts : INT = 0
+    locked_until : TIMESTAMPTZ
+    pin_hash : VARCHAR(255)
+}
+
+entity "refresh_tokens" as REFRESH {
+  * id : TEXT <<PK>>
+  --
+  * user_id : TEXT <<FK>>
+  * token : TEXT <<UNIQUE>>
+  * expires_at : TIMESTAMPTZ
+  * revoked : BOOLEAN = false
+  * created_at : TIMESTAMPTZ
+}
+
+entity "otp_codes" as OTP {
+  * id : BIGSERIAL <<PK>>
+  --
+  * user_id : TEXT <<FK>>
+  * expires_at : TIMESTAMPTZ
+  * used : BOOLEAN = false
+  * created_at : TIMESTAMPTZ
+}
+
+entity "trusted_devices" as DEVICES {
+  * id : BIGSERIAL <<PK>>
+  --
+  * user_id : TEXT <<FK>>
+    device_name : VARCHAR(200)
+    user_agent : TEXT
+  * ip_address : VARCHAR(45)
+  * last_used : TIMESTAMPTZ
+  * trusted : BOOLEAN = true
+  * created_at : TIMESTAMPTZ
+}
+
+entity "login_audit" as AUDIT {
+  * id : BIGSERIAL <<PK>>
+  --
+    user_id : TEXT <<FK, nullable>>
+    email : VARCHAR(255)
+  * ip_address : VARCHAR(45)
+    user_agent : TEXT
+  * status : VARCHAR(30)
+    failure_reason : VARCHAR(200)
+    correlation_id : VARCHAR(36)
+  * created_at : TIMESTAMPTZ
+}
+
+entity "log_entries" as LOGS {
+  * id : BIGSERIAL <<PK>>
+  --
+  * timestamp : TIMESTAMPTZ
+  * level : VARCHAR(10)
+  * message : VARCHAR(500)
+    correlation_id : VARCHAR(36)
+    service_name : VARCHAR(100)
+    logger_name : VARCHAR(200)
+    thread_name : VARCHAR(100)
+    stack_trace : TEXT
+}
+
+' ─── RELATIONSHIPS ───────────────────────
+
+USERS ||--o{ REFRESH      : "has many\nrefresh tokens"
+USERS ||--o{ OTP          : "has many\nOTP codes"
+USERS ||--o{ DEVICES      : "has many\ntrusted devices"
+USERS |o--o{ AUDIT        : "has many\nlogin events\n(nullable)"
+
+note bottom of LOGS
+  No FK to users.
+  Linked at query time
+  via correlation_id.
+end note
+
+note right of AUDIT
+  user_id is nullable —
+  failed logins for unknown
+  emails are also recorded.
+end note
+
+@enduml

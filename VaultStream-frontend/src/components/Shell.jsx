@@ -1,11 +1,97 @@
 // Shell.jsx — FINTECH_OS top nav +  sidebar
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "./Icon.jsx";
 
+function useAlerts() {
+  const [alerts, setAlerts] = useState([]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('fos_token') || '';
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    async function check() {
+      const found = [];
+      try {
+        const [metricsRes, statsRes] = await Promise.all([
+          fetch('/api/metrics/summary', { headers }),
+          fetch('/api/logs/stats',      { headers }),
+        ]);
+        const metrics = metricsRes.ok ? await metricsRes.json() : null;
+        const stats   = statsRes.ok   ? await statsRes.json()   : null;
+
+        if (metrics) {
+          const { statCards, nodes, serviceHealth } = metrics;
+
+          if (statCards?.errorRate > 1)
+            found.push({ id: 'err-rate', level: 'error',
+              title: 'High Error Rate',
+              body: `${statCards.errorRate.toFixed(2)}% of requests are failing — investigate immediately.` });
+
+          if (statCards?.avgLatencyMs > 500)
+            found.push({ id: 'latency', level: 'warn',
+              title: 'Elevated Latency',
+              body: `Avg response time is ${statCards.avgLatencyMs.toFixed(0)} ms (threshold: 500 ms).` });
+
+          (nodes || []).forEach(n => {
+            if (n.cpuPct > 85)
+              found.push({ id: `cpu-${n.region}`, level: 'error',
+                title: `CPU Critical — ${n.region}`,
+                body: `${n.region} CPU at ${n.cpuPct.toFixed(1)}%. Risk of service degradation.` });
+            else if (n.cpuPct > 70)
+              found.push({ id: `cpu-warn-${n.region}`, level: 'warn',
+                title: `CPU Elevated — ${n.region}`,
+                body: `${n.region} CPU at ${n.cpuPct.toFixed(1)}%.` });
+
+            const heapPct = n.heapMaxMb > 0 ? (n.heapUsedMb / n.heapMaxMb) * 100 : 0;
+            if (heapPct > 85)
+              found.push({ id: `heap-${n.region}`, level: 'error',
+                title: `Heap Pressure — ${n.region}`,
+                body: `Heap at ${heapPct.toFixed(1)}% (${n.heapUsedMb}/${n.heapMaxMb} MB). OOM risk.` });
+          });
+
+          (serviceHealth || []).forEach(s => {
+            if (s.pct < 90)
+              found.push({ id: `svc-${s.name}`, level: 'error',
+                title: `Service Degraded — ${s.name}`,
+                body: `${s.name} uptime at ${s.pct.toFixed(2)}%. Needs immediate attention.` });
+            else if (s.pct < 99)
+              found.push({ id: `svc-warn-${s.name}`, level: 'warn',
+                title: `Service Degraded — ${s.name}`,
+                body: `${s.name} uptime at ${s.pct.toFixed(2)}%.` });
+          });
+        }
+
+        if (stats) {
+          const errorCount = stats.errorCount ?? stats.byLevel?.ERROR ?? 0;
+          const total      = stats.total ?? 0;
+          if (errorCount > 0 && total > 0) {
+            const pct = (errorCount / total * 100).toFixed(2);
+            found.push({ id: 'log-errors', level: errorCount > 50 ? 'error' : 'warn',
+              title: `${errorCount} ERROR Log${errorCount > 1 ? 's' : ''}`,
+              body: `${pct}% of log entries are errors. Review the System Logs for details.` });
+          }
+        }
+      } catch (_) { /* API unavailable — no alerts */ }
+
+      setAlerts(found);
+    }
+
+    check();
+    const t = setInterval(check, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  return alerts;
+}
+
 export function TopNav({ user, onSignOut }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+  const alerts = useAlerts();
+  const hasError = alerts.some(a => a.level === 'error');
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const tabs = [
@@ -14,16 +100,16 @@ export function TopNav({ user, onSignOut }) {
   ];
   const activeTabId = tabs.find((t) => t.path === pathname)?.id;
 
-  // close menu on outside click
+  // close menus on outside click
   useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
+    if (!menuOpen && !notifOpen) return;
+    const close = () => { setMenuOpen(false); setNotifOpen(false); };
     const t = setTimeout(() => window.addEventListener("click", close), 0);
     return () => {
       clearTimeout(t);
       window.removeEventListener("click", close);
     };
-  }, [menuOpen]);
+  }, [menuOpen, notifOpen]);
 
   return (
     <header className="topnav">
@@ -55,10 +141,45 @@ export function TopNav({ user, onSignOut }) {
         <span className="d" /> ADMIN
       </span>
 
-      <button className="iconbtn" title="Notifications">
-        <Icon name="bell" size={15} />
-        <span className="dot" />
-      </button>
+      <div style={{ position: 'relative' }} ref={notifRef} onClick={e => e.stopPropagation()}>
+        <button
+          className="iconbtn"
+          title="Notifications"
+          onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }}
+        >
+          <Icon name="bell" size={15} />
+          {alerts.length > 0 && (
+            <span className="dot" style={hasError ? { background: 'var(--status-error)', boxShadow: '0 0 6px var(--status-error)' } : {}} />
+          )}
+        </button>
+
+        {notifOpen && (
+          <div className="notif-panel">
+            <div className="notif-panel__head">
+              <span className="notif-panel__title">Alerts</span>
+              <span className="notif-panel__count">{alerts.length} active</span>
+            </div>
+            {alerts.length === 0 ? (
+              <div className="notif-panel__empty">
+                <Icon name="check-circle" size={20} />
+                All systems operational
+              </div>
+            ) : (
+              <div className="notif-panel__list">
+                {alerts.map(a => (
+                  <div key={a.id} className={`notif-item notif-item--${a.level}`}>
+                    <Icon name={a.level === 'error' ? 'alert-octagon' : 'alert-triangle'} size={14} />
+                    <div>
+                      <div className="notif-item__title">{a.title}</div>
+                      <div className="notif-item__body">{a.body}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div
         className="avatar"
@@ -132,14 +253,9 @@ export function Sidebar({ activeNodes = 12, onSignOut }) {
 
       <div className="sidebar__spacer" />
 
-      <button className="sidebar__cta">DEPLOY NODE</button>
-
       <div className="sidebar__foot">
         <div className="sidebar__footitem">
           <Icon name="help-circle" size={16} /> Support
-        </div>
-        <div className="sidebar__footitem">
-          <Icon name="code" size={16} /> API
         </div>
         {onSignOut && (
           <div className="sidebar__footitem sidebar__footitem--danger" onClick={onSignOut} style={{ cursor: "pointer" }}>

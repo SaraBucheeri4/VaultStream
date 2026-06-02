@@ -326,9 +326,6 @@ export default function MetricsView() {
             </div>
           </div>
 
-          <button className="btn btn--outlined" style={{ width: '100%', marginTop: 22 }}>
-            View Network Topology
-          </button>
         </div>
       </div>
     </>

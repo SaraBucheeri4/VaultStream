@@ -1,0 +1,162 @@
+@startuml VaultStream Auth Flow
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 12
+
+skinparam activity {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+  StartColor #e94560
+  EndColor #e94560
+  BarColor #533483
+}
+
+skinparam activityDiamond {
+  BackgroundColor #0f3460
+  BorderColor #e94560
+  FontColor #e0e0e0
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+skinparam note {
+  BackgroundColor #0d1b2a
+  BorderColor #533483
+  FontColor #a0c4ff
+}
+
+title VaultStream — Authentication Flow
+
+start
+
+:User submits **email + password**;
+
+' ── RATE LIMIT ──────────────────────────
+if (Rate limit exceeded?\n5 req / 15 min per IP) then (yes)
+  :Return **429 Too Many Requests**;
+  stop
+endif
+
+' ── USER LOOKUP ─────────────────────────
+if (User exists in DB?) then (no)
+  :Return **401 Unauthorized**;
+  stop
+endif
+
+' ── ACCOUNT LOCK ────────────────────────
+if (Account locked?\nlocked_until > NOW()) then (yes)
+  :Return **423 Account Locked**\n+ remaining lock time;
+  stop
+endif
+
+' ── PASSWORD CHECK ──────────────────────
+if (BCrypt password match?) then (no)
+  :Increment **failed_attempts**;
+  if (failed_attempts ≥ 5?) then (yes)
+    :Set **locked_until** = NOW() + 15 min;
+    :Log **ACCOUNT_LOCKED** event;
+    :Return **423 Account Locked**;
+    stop
+  else (no)
+    :Return **401 Unauthorized**;
+    stop
+  endif
+endif
+
+:Reset **failed_attempts** = 0;
+
+' ── SUSPICIOUS LOGIN DETECTION ──────────
+:Check login history\n(new IP / new device / rapid attempts);
+
+if (Suspicious activity detected?) then (yes)
+  :Log **SUSPICIOUS_LOGIN** security event;
+  note right: Flags: new device,\nnew IP, rapid attempts,\nmultiple failures
+endif
+
+' ── JWT GENERATION ──────────────────────
+:Generate **Access Token** (JWT, 15 min);
+:Generate **Refresh Token** (7-day, store in DB);
+:Record **LOGIN_SUCCESS** in login_audit;
+
+' ── OTP STEP ────────────────────────────
+:Return tokens to client\n(stored in sessionStorage);
+:Trigger **POST /api/otp/generate**;
+:Generate 6-digit OTP → store in **Redis** (5-min TTL);
+:Send OTP email via **Resend.com**;
+
+:User submits OTP code;
+
+if (OTP attempts ≥ 5 in last hour?) then (yes)
+  :Return **429 OTP Rate Limited**;
+  stop
+endif
+
+if (OTP valid & not expired?) then (no)
+  :Return **400 Invalid OTP**;
+  stop
+endif
+
+:Mark OTP as **used** in otp_codes;
+:Register device as **trusted** (IP + user agent);
+:Store user in **localStorage**;
+
+:User authenticated ✓\nRedirect → /logs;
+
+' ── AUTHENTICATED REQUESTS ──────────────
+partition "Subsequent API Requests" {
+  :Client sends request\nwith **Authorization: Bearer <JWT>**;
+
+  if (Token in Redis blacklist?) then (yes)
+    :Return **401 Unauthorized**;
+    stop
+  endif
+
+  if (JWT signature valid & not expired?) then (no)
+    :Return **401 Unauthorized**;
+    stop
+  endif
+
+  :Extract user from JWT claims;
+  :Process request ✓;
+}
+
+' ── TOKEN REFRESH ───────────────────────
+partition "Token Refresh  (Access Token Expired)" {
+  :Client sends **POST /auth/refresh**\nwith refresh token;
+
+  if (Refresh token revoked?) then (yes)
+    :Detect possible **token reuse attack**;
+    :Revoke ALL user sessions;
+    :Log **TOKEN_REUSE_DETECTED**;
+    :Return **401 Unauthorized**;
+    stop
+  endif
+
+  if (Refresh token expired?) then (yes)
+    :Return **401 Unauthorized**;
+    stop
+  endif
+
+  :Revoke old refresh token;
+  :Issue new **Access Token** + **Refresh Token**;
+  :Return rotated tokens ✓;
+}
+
+' ── LOGOUT ──────────────────────────────
+partition "Logout" {
+  :Client sends **POST /auth/logout**;
+  :Add access token to **Redis blacklist** (until expiry);
+  :Revoke refresh token in DB;
+  :Log **LOGOUT** event;
+  :Clear client storage ✓;
+}
+
+stop
+
+@enduml

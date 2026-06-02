@@ -1,0 +1,119 @@
+@startuml VaultStream Architecture
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 12
+
+skinparam rectangle {
+  BackgroundColor #16213e
+  BorderColor #0f3460
+  FontColor #e0e0e0
+}
+
+skinparam database {
+  BackgroundColor #0f3460
+  BorderColor #e94560
+  FontColor #e0e0e0
+}
+
+skinparam component {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+}
+
+skinparam package {
+  BackgroundColor #0d1b2a
+  BorderColor #533483
+  FontColor #a0c4ff
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+title VaultStream — System Architecture
+
+actor "User" as USER
+
+' ── FRONTEND ──────────────────────────────
+package "Frontend  [React 18 + Vite :5173]" {
+  component "Login\n(2-step auth)" as LOGIN
+  component "LogsView\n(search / export)" as LOGSVIEW
+  component "MetricsView\n(dashboard)" as METRICSVIEW
+}
+
+' ── BACKEND ───────────────────────────────
+package "Backend  [Spring Boot 3.2 :8081]" {
+
+  package "Security" {
+    component "JWT Filter\n+ Rate Limiter" as SEC
+  }
+
+  package "API Controllers" {
+    component "Auth\n/auth/**" as AUTH_CTRL
+    component "OTP\n/api/otp/**" as OTP_CTRL
+    component "Logs\n/api/logs/**" as LOG_CTRL
+    component "Metrics\n/api/metrics/**" as METRICS_CTRL
+    component "Devices + Pin\n/api/devices  /api/pin" as DEV_PIN_CTRL
+  }
+
+  package "Services" {
+    component "Auth + Token\n(JWT, BCrypt)" as AUTH_SVC
+    component "OTP + Email\n(Redis, Resend)" as OTP_SVC
+    component "Audit + Suspicious\nLogin Detection" as AUDIT_SVC
+    component "Log + Metrics\n(query / counters)" as LOG_SVC
+    component "Device + Pin\n(trust, BCrypt+pepper)" as DEV_SVC
+  }
+}
+
+' ── DATA STORES ───────────────────────────
+database "PostgreSQL 16\n:5432" as POSTGRES
+database "Redis 7\n:6379\n(OTP · blacklist · rate-limit)" as REDIS
+
+' ── EXTERNAL / OPS ────────────────────────
+component "Resend.com\n(Email API)" as RESEND
+
+package "Observability" {
+  component "ELK Stack\n(Logstash → ES → Kibana)" as ELK
+  component "Prometheus\n:9090" as PROMETHEUS
+}
+
+' ══ RELATIONSHIPS ═════════════════════════
+
+USER --> LOGIN : HTTPS
+USER --> LOGSVIEW
+USER --> METRICSVIEW
+
+LOGIN -down-> SEC : REST JSON
+LOGSVIEW -down-> SEC
+METRICSVIEW -down-> SEC
+
+SEC --> AUTH_CTRL
+SEC --> OTP_CTRL
+SEC --> LOG_CTRL
+SEC --> METRICS_CTRL
+SEC --> DEV_PIN_CTRL
+
+AUTH_CTRL --> AUTH_SVC
+OTP_CTRL --> OTP_SVC
+LOG_CTRL --> LOG_SVC
+METRICS_CTRL --> LOG_SVC
+DEV_PIN_CTRL --> DEV_SVC
+AUTH_CTRL --> AUDIT_SVC
+
+AUTH_SVC --> POSTGRES
+OTP_SVC --> REDIS
+OTP_SVC --> RESEND
+AUTH_SVC --> REDIS : token blacklist
+AUDIT_SVC --> POSTGRES
+LOG_SVC --> POSTGRES
+DEV_SVC --> POSTGRES
+SEC --> REDIS : rate-limit check
+
+POSTGRES --> ELK : WARN/ERROR logs
+PROMETHEUS --> ELK : metrics
+
+@enduml

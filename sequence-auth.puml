@@ -1,0 +1,114 @@
+@startuml VaultStream Auth Sequence
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 12
+
+skinparam sequence {
+  ArrowColor #e94560
+  ArrowFontColor #bdbdbd
+  ArrowFontSize 10
+  ActorBorderColor #e94560
+  ActorBackgroundColor #0f3460
+  ActorFontColor #e0e0e0
+  ParticipantBorderColor #533483
+  ParticipantBackgroundColor #16213e
+  ParticipantFontColor #e0e0e0
+  LifeLineBorderColor #533483
+  LifeLineBackgroundColor #0d1b2a
+  NoteBackgroundColor #0d1b2a
+  NoteBorderColor #533483
+  NoteFontColor #a0c4ff
+  DividerBackgroundColor #0f3460
+  DividerFontColor #a0c4ff
+}
+
+title VaultStream — Authentication Sequence
+
+actor       "User"           as USER
+participant "Frontend"       as FE
+participant "RateLimit\nFilter" as RATE
+participant "Auth\nController" as CTRL
+participant "Token\nService"  as TOKEN
+participant "OTP\nService"    as OTP
+participant "Audit\nService"  as AUDIT
+database    "PostgreSQL"      as DB
+database    "Redis"           as REDIS
+participant "Resend.com"      as RESEND
+
+== 1. Login ==
+
+USER -> FE    : email + password
+FE   -> RATE  : POST /auth/login
+RATE -> REDIS : check IP rate limit
+note right : 429 if > 5 req/15 min
+RATE -> CTRL  : forward
+CTRL -> DB    : load user by email
+note right : 401 if not found
+CTRL -> CTRL  : BCrypt verify password
+note right : 401/423 if wrong\nor account locked
+CTRL -> DB    : reset failed_attempts
+CTRL -> TOKEN : generateAccessToken(user)
+TOKEN --> CTRL : JWT (15 min)
+CTRL -> TOKEN : generateRefreshToken(user)
+TOKEN -> DB   : INSERT refresh_tokens
+TOKEN --> CTRL : refresh UUID (7 days)
+CTRL -> AUDIT : recordSuccess(...)
+AUDIT -> DB   : INSERT login_audit
+CTRL --> FE   : 200 { accessToken, refreshToken }
+FE -> FE      : store in sessionStorage
+
+== 2. OTP ==
+
+FE  -> OTP   : POST /api/otp/generate
+OTP -> REDIS : rate limit check (5/hour)
+OTP -> OTP   : generate 6-digit code
+OTP -> REDIS : store code (TTL 5 min)
+OTP -> DB    : INSERT otp_codes (audit)
+OTP -> RESEND : send OTP email
+OTP --> FE   : 200 OK
+FE --> USER  : "Check your email"
+
+USER -> FE   : enter OTP
+FE   -> OTP  : POST /api/otp/verify
+OTP  -> REDIS : get stored code
+note right : 400 if expired\n429 if > 5 attempts
+OTP  -> DB   : UPSERT trusted_devices
+OTP  --> FE  : 200 OK
+FE --> USER  : redirect → /logs ✓
+
+== 3. Authenticated Request ==
+
+USER -> FE   : GET /logs
+FE   -> CTRL : Bearer <JWT>
+CTRL -> REDIS : blacklist check
+note right : 401 if blacklisted
+CTRL -> TOKEN : validateToken(jwt)
+note right : 401 if invalid/expired
+CTRL -> DB   : load user
+CTRL --> FE  : 200 { data }
+
+== 4. Token Refresh ==
+
+FE   -> CTRL  : POST /auth/refresh
+CTRL -> TOKEN : rotateRefreshToken(old)
+TOKEN -> DB   : check + revoke old token
+note right : 401 if revoked (reuse attack)\nor expired → revoke all sessions
+TOKEN -> DB   : INSERT new refresh_token
+TOKEN --> CTRL : [newAccess, newRefresh]
+CTRL --> FE   : 200 { tokens }
+
+== 5. Logout ==
+
+USER -> FE   : Logout
+FE   -> CTRL : POST /auth/logout
+CTRL -> TOKEN : blacklistToken(jwt)
+TOKEN -> REDIS : SET blacklist:{token} (TTL)
+CTRL -> TOKEN : revokeAllTokens(userId)
+TOKEN -> DB   : UPDATE refresh_tokens revoked=true
+CTRL -> AUDIT : recordLogout(...)
+AUDIT -> DB   : INSERT login_audit
+CTRL --> FE   : 200 OK
+FE --> USER  : redirect → /login
+
+@enduml

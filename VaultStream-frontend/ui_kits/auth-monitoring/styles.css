@@ -1762,3 +1762,106 @@ body {
 .topnav__cta:active {
   transform: scale(0.985);
 }
+
+/* ── Notification panel ───────────────────────────────────────────────────── */
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: var(--surface-2, #13172b);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  z-index: 200;
+  overflow: hidden;
+}
+.notif-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.notif-panel__title {
+  font: 600 13px var(--font-body);
+  color: var(--fg-1);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.notif-panel__count {
+  font: 500 11px var(--font-body);
+  color: var(--fg-4);
+}
+.notif-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  color: var(--fg-4);
+  font: 500 13px var(--font-body);
+}
+.notif-panel__list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+.notif-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.15s;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: rgba(255,255,255,0.03); }
+.notif-item--error { color: var(--status-error, #f87171); }
+.notif-item--warn  { color: var(--status-warn,  #fbbf24); }
+.notif-item--error > svg { flex-shrink: 0; margin-top: 2px; }
+.notif-item--warn  > svg { flex-shrink: 0; margin-top: 2px; }
+.notif-item__title {
+  font: 600 12px var(--font-body);
+  margin-bottom: 2px;
+}
+.notif-item__body {
+  font: 400 11px var(--font-body);
+  color: var(--fg-3);
+  line-height: 1.5;
+}
+
+/* ── Filter dropdown ──────────────────────────────────────────────────────── */
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  background: var(--surface-2, #13172b);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.filter-dropdown__item {
+  padding: 9px 16px;
+  font: 500 13px var(--font-body);
+  color: var(--fg-2, #c0c4d6);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.filter-dropdown__item:hover {
+  background: rgba(255,255,255,0.06);
+}
+.filter-dropdown__item.active {
+  color: var(--primary-400, #a78bfa);
+  background: rgba(167,139,250,0.08);
+}
+
+/* ── Logtable empty state ─────────────────────────────────────────────────── */
+.logtable__empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--fg-4, #555b77);
+  font: 500 13px var(--font-body);
+}

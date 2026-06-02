@@ -1,22 +1,18 @@
 package com.vaultstream.infra.logging;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.UUID;
+
 import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.UUID;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Assigns a unique correlation ID to every inbound request.
- * The ID is stored in MDC so every log line in the same thread automatically carries it,
- * and returned to the caller via X-Correlation-ID response header.
- */
 @Component
 @Order(1)
 public class CorrelationIdFilter extends OncePerRequestFilter {
@@ -39,7 +35,6 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // Always clean up MDC to avoid leaking values across pooled threads
             MDC.remove(MDC_KEY);
         }
     }

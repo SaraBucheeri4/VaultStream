@@ -1,0 +1,123 @@
+@startuml VaultStream Use Cases
+!theme plain
+skinparam backgroundColor #1a1a2e
+skinparam defaultFontColor #e0e0e0
+skinparam defaultFontSize 12
+
+skinparam usecase {
+  BackgroundColor #16213e
+  BorderColor #533483
+  FontColor #e0e0e0
+  ArrowColor #e94560
+}
+
+skinparam actor {
+  BackgroundColor #0f3460
+  BorderColor #e94560
+  FontColor #e0e0e0
+}
+
+skinparam package {
+  BackgroundColor #0d1b2a
+  BorderColor #533483
+  FontColor #a0c4ff
+}
+
+skinparam arrow {
+  Color #e94560
+  FontColor #bdbdbd
+  FontSize 10
+}
+
+title VaultStream — Use Case Diagram
+
+left to right direction
+scale 1800 width
+
+' ── ACTORS ──────────────────────────────
+actor "User" as USER
+actor "System\n(Scheduler / Filter)" as SYSTEM
+actor "Prometheus" as PROM
+actor "Resend.com\n(Email)" as EMAIL
+
+' ── AUTHENTICATION ──────────────────────
+package "Authentication" {
+  usecase "Register Account" as UC_REGISTER
+  usecase "Login with\nEmail & Password" as UC_LOGIN
+  usecase "Verify OTP Code" as UC_OTP
+  usecase "Refresh Access Token" as UC_REFRESH
+  usecase "Logout\n(single session)" as UC_LOGOUT
+  usecase "Logout All Sessions" as UC_LOGOUT_ALL
+}
+
+' ── SECURITY ────────────────────────────
+package "Security Controls" {
+  usecase "Rate Limit Requests\n(5 req / 15 min)" as UC_RATE
+  usecase "Lock Account\n(5 failed attempts)" as UC_LOCK
+  usecase "Detect Suspicious Login\n(new IP / device)" as UC_SUSPICIOUS
+  usecase "Detect Token Reuse" as UC_REUSE
+  usecase "Manage Trusted Devices" as UC_DEVICES
+  usecase "Revoke Trusted Device" as UC_REVOKE_DEV
+}
+
+' ── PIN ─────────────────────────────────
+package "PIN Management" {
+  usecase "Set Up PIN" as UC_PIN_SETUP
+  usecase "Verify PIN" as UC_PIN_VERIFY
+}
+
+' ── LOGS ────────────────────────────────
+package "Log Management" {
+  usecase "View System Logs" as UC_LOGS
+  usecase "Search & Filter Logs\n(level / service / date)" as UC_SEARCH
+  usecase "Trace by Correlation ID" as UC_TRACE
+  usecase "Export Logs as CSV" as UC_EXPORT
+}
+
+' ── METRICS ─────────────────────────────
+package "Metrics & Monitoring" {
+  usecase "View Metrics Dashboard\n(stat cards / health)" as UC_METRICS
+  usecase "Scrape Prometheus\nEndpoint" as UC_PROM
+}
+
+' ── USER RELATIONSHIPS ──────────────────
+USER --> UC_REGISTER
+USER --> UC_LOGIN
+USER --> UC_OTP
+USER --> UC_REFRESH
+USER --> UC_LOGOUT
+USER --> UC_LOGOUT_ALL
+
+USER --> UC_DEVICES
+USER --> UC_REVOKE_DEV
+
+USER --> UC_PIN_SETUP
+USER --> UC_PIN_VERIFY
+
+USER --> UC_LOGS
+USER --> UC_SEARCH
+USER --> UC_TRACE
+USER --> UC_EXPORT
+USER --> UC_METRICS
+
+' ── SYSTEM RELATIONSHIPS ────────────────
+SYSTEM --> UC_RATE
+SYSTEM --> UC_LOCK
+SYSTEM --> UC_SUSPICIOUS
+SYSTEM --> UC_REUSE
+
+' ── EXTERNAL ACTOR RELATIONSHIPS ────────
+PROM --> UC_PROM
+EMAIL <-- UC_OTP : sends OTP email
+
+' ── INCLUDE / EXTEND ────────────────────
+UC_LOGIN .> UC_RATE      : <<include>>
+UC_LOGIN .> UC_LOCK      : <<include>>
+UC_LOGIN .> UC_SUSPICIOUS : <<include>>
+UC_OTP   .> UC_DEVICES   : <<extend>>\nregisters device on success
+UC_REFRESH .> UC_REUSE   : <<include>>
+UC_SEARCH .> UC_LOGS     : <<extend>>
+UC_TRACE  .> UC_LOGS     : <<extend>>
+UC_EXPORT .> UC_LOGS     : <<extend>>
+
+@enduml
